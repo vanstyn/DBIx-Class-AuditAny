@@ -7,8 +7,7 @@ use Moose;
 # ABSTRACT: Flexible change tracking for DBIx::Class schemas
 
 use Class::MOP::Class;
-
-#$SIG{__DIE__} = sub { confess(shift) };
+use Try::Tiny;
 
 has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
 has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
@@ -234,6 +233,7 @@ sub track {
 	
 	$self->init_sources(@$init_sources) if ($init_sources);
 	$self->init_all_sources if ($init_all);
+	return 1;
 }
 
 sub BUILD {
@@ -638,3 +638,43 @@ sub record_change {
 
 
 1;
+
+
+__END__
+
+=head1 SYNOPSIS
+
+ use DBIx::Class::AuditAny;
+
+ # Setup tracking on a DBIx::Class::Schema object ($schema)
+
+ DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_all_sources => 1,
+   collector_class => 'DBIx::Class::AuditAny::Collector::DBIC',
+   collector_params => {
+     target_source => 'AuditChangeSet',
+     change_data_rel => 'audit_changes',
+     column_data_rel => 'audit_change_columns',
+   }
+ );
+
+
+=head1 DESCRIPTION
+
+This module provides a generalized way to track changes to DBIC databases.
+
+Inspired by Catalyst, L<DBIx::Class::AuditLog> and L<DBIx::Class::Journal> ...
+
+
+=head1 SEE ALSO
+ 
+=over 4
+ 
+=item L<DBIx::Class::AuditLog>
+ 
+=item L<DBIx::Class::Journal>
+ 
+=back
+
+=cut

@@ -4,6 +4,7 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 
 # VERSION
 
+use DateTime;
 use Time::HiRes qw(gettimeofday tv_interval);
 sub get_dt { DateTime->now( time_zone => 'local' ) }
 
@@ -27,6 +28,7 @@ has 'changeset_elapsed', is => 'rw', default => undef;
 sub add_changes { push @{(shift)->changes}, @_ }
 sub all_changes { @{(shift)->changes} }
 sub count_changes { scalar(@{(shift)->changes}) }
+sub all_column_changes { map { $_->all_column_changes } (shift)->all_changes }
 
 sub finish {
 	my $self = shift;
