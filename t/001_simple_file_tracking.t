@@ -2,12 +2,9 @@
 
 # t/001_simple_file_tracking.t - test logging changes to a file
 
-
-use Class::C3;
 use strict;
-use Test::More;
 use warnings;
-no warnings qw(once);
+use Test::More;
 
 BEGIN {
     eval "use DBD::SQLite";
@@ -38,8 +35,8 @@ ok(
 			print LOG join("\t",
 				$_->ChangeContext->action,
 				$_->column_name,
-				$_->old_value,
-				$_->new_value
+				$_->old_value || '<undef>',
+				$_->new_value || '<undef>'
 			) . "\n" for ($ChangeSet->all_column_changes);
 			close LOG;
 		}
