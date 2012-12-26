@@ -5,21 +5,17 @@
 use strict;
 use warnings;
 use Test::More;
-
-BEGIN {
-    eval "use DBD::SQLite";
-    plan $@
-        ? ( skip_all => 'needs DBD::SQLite for testing' )
-        : ( tests => 11 );
-}
-
+use DBICx::TestDatabase 0.04;
 use lib qw(t/lib);
 
-use DBICx::TestDatabase 0.04;
-my $schema = DBICx::TestDatabase->new('TestSchema::One');
-ok( $schema );
+plan tests => 11;
 
 use_ok( 'DBIx::Class::AuditAny' );
+
+ok(
+	my $schema = DBICx::TestDatabase->new('TestSchema::One'),
+	"Initialize Test Database"
+);
 
 mkdir('t/var') unless (-d 't/var');
 my $log = 't/var/log.txt';
@@ -52,12 +48,20 @@ ok(
 	"Insert a test row"
 );
 
-my $Row = $schema->resultset('Contact')->search_rs({ last => 'Smith' })->first;
-ok($Row,"Find the test row");
+ok(
+	my $Row = $schema->resultset('Contact')->search_rs({ last => 'Smith' })->first,
+	"Find the test row"
+);
 
-ok($Row->update({ last => 'Doe' }),"Update the test row");
+ok(
+	$Row->update({ last => 'Doe' }),
+	"Update the test row"
+);
 
-ok($Row->delete,"Delete the test row");
+ok(
+	$Row->delete,
+	"Delete the test row"
+);
 
 my $d = {};
 ok(open(LOG, "< $log"), "Open the log file for reading");
