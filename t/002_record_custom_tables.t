@@ -10,6 +10,8 @@ use lib qw(t/lib);
 
 plan tests => 12;
 
+$| = 1;
+
 use_ok( 'DBIx::Class::AuditAny' );
 
 ok(
@@ -24,7 +26,7 @@ ok(
 	DBIx::Class::AuditAny->track(
 		schema => $schema, 
 		track_all_sources => 1,
-		collector_class => 'DBIx::Class::AuditAny::Collector::DBIC',
+		collector_class => 'Collector::DBIC',
 		collector_params => {
 			target_source => 'AuditChangeSet',
 			change_data_rel => 'audit_changes',

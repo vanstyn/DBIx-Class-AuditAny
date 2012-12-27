@@ -29,7 +29,7 @@ ok(
 	DBIx::Class::AuditAny->track(
 		schema => $schema, 
 		track_all_sources => 1,
-		collector_class => 'DBIx::Class::AuditAny::Collector::DBIC',
+		collector_class => 'Collector::DBIC',
 		collector_params => {
 			target_schema => $audit_schema,
 			target_source => 'AuditChangeSet',

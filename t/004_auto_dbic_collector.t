@@ -22,7 +22,7 @@ ok(
 	my $Auditor = DBIx::Class::AuditAny->track(
 		schema => $schema, 
 		track_all_sources => 1,
-		collector_class => 'DBIx::Class::AuditAny::Collector::AutoDBIC',
+		collector_class => 'Collector::AutoDBIC',
 		collector_params => {
 			sqlite_db => 't/var/audit.db',
 		},

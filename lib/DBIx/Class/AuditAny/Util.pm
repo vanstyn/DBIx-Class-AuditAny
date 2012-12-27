@@ -2,10 +2,12 @@ package # Hide from PAUSE
      DBIx::Class::AuditAny::Util;
 
 require Exporter;
-require Class::MOP::Class;
 use Term::ANSIColor qw(:constants);
 use Data::Dumper;
+require Module::Runtime;
 
+our @ISA = qw(Exporter);
+our @EXPORT = qw(scream scream_color resolve_localclass package_exists);
 
 sub scream {
 	local $_ = caller_data(3);
@@ -62,11 +64,12 @@ sub package_exists(@) {
 	return exists $base->{$pack."::"};
 }
 
-
-# Automatically export all functions defined above:
-BEGIN {
-	our @ISA = qw(Exporter);
-	our @EXPORT = Class::MOP::Class->initialize(__PACKAGE__)->get_method_list;
+sub resolve_localclass($) { 
+	my $class = shift;
+	$class = $class =~ /^\+(.*)$/ ? $1 : "DBIx::Class::AuditAny::$class";
+	Module::Runtime::require_module($class);
+	return $class;
 }
+
 
 1;

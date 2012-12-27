@@ -8,18 +8,27 @@ use Moose;
 
 use Class::MOP::Class;
 use Try::Tiny;
+use DBIx::Class::AuditAny::Util;
 
 has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
 has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
 has 'track_actions', is => 'ro', isa => 'ArrayRef', default => sub { [qw(insert update delete)] };
 has 'allow_multiple_auditors', is => 'ro', isa => 'Bool', default => 0; 
 
-has 'source_context_class', is => 'ro', default => 'DBIx::Class::AuditAny::AuditContext::Source';
-has 'change_context_class', is => 'ro', default => 'DBIx::Class::AuditAny::AuditContext::Change';
-has 'changeset_context_class', is => 'ro', default => 'DBIx::Class::AuditAny::AuditContext::ChangeSet';
-has 'column_context_class', is => 'ro', default => 'DBIx::Class::AuditAny::AuditContext::Column';
-has 'default_datapoint_class', is => 'ro', default => 'DBIx::Class::AuditAny::DataPoint';
-has 'collector_class', is => 'ro', required => 1;
+has 'source_context_class', is => 'ro', default => 'AuditContext::Source';
+has 'change_context_class', is => 'ro', default => 'AuditContext::Change';
+has 'changeset_context_class', is => 'ro', default => 'AuditContext::ChangeSet';
+has 'column_context_class', is => 'ro', default => 'AuditContext::Column';
+has 'default_datapoint_class', is => 'ro', default => 'DataPoint';
+has 'collector_class', is => 'ro', isa => 'Str';
+
+around $_ => sub { 
+	my $orig = shift; my $self = shift; 
+	resolve_localclass $self->$orig(@_);
+} for 
+qw(source_context_class change_context_class changeset_context_class 
+column_context_class default_datapoint_class collector_class);
+
 has 'collector_params', is => 'ro', isa => 'HashRef', default => sub {{}};
 has 'primary_key_separator', is => 'ro', isa => 'Str', default => '|~|';
 has 'datapoints', is => 'ro', isa => 'ArrayRef[Str]', lazy_build => 1;
@@ -31,7 +40,6 @@ has 'record_empty_changes', is => 'ro', isa => 'Bool', default => 0;
 
 has 'collector', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
-	eval 'require ' . $self->collector_class or die $@;
 	return ($self->collector_class)->new(
 		%{$self->collector_params},
 		AuditObj => $self
@@ -217,7 +225,7 @@ sub track {
 		die "'collect' cannot be used with 'collector_params', 'collector_class' or 'collector'"
 			if ($opts{collector_params} || $opts{collector_class} || $opts{collector});
 			
-		$opts{collector_class} = 'DBIx::Class::AuditAny::Collector';
+		$opts{collector_class} = 'Collector';
 		$opts{collector_params} = { collect_coderef => $collect };
 	}
 	
@@ -239,12 +247,12 @@ sub track {
 sub BUILD {
 	my $self = shift;
 	
-	eval 'require ' . $self->change_context_class or die $@;
-	eval 'require ' . $self->changeset_context_class or die $@;
-	eval 'require ' . $self->source_context_class or die $@;
-	eval 'require ' . $self->column_context_class or die $@;
-	eval 'require ' . $self->collector_class or die $@;
-	eval 'require ' . $self->default_datapoint_class or die $@;
+	# init all classes first:
+	$self->change_context_class;
+	$self->changeset_context_class;
+	$self->source_context_class;
+	$self->column_context_class;
+	$self->default_datapoint_class;
 	
 	$self->_init_datapoints;
 	$self->_bind_schema;
