@@ -31,8 +31,8 @@ has 'record_empty_changes', is => 'ro', isa => 'Bool', default => 0;
 
 has 'collector', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
-	eval 'require ' . $self->collector_class;
-	return ($self->collector_class)->new( 
+	eval 'require ' . $self->collector_class or die $@;
+	return ($self->collector_class)->new(
 		%{$self->collector_params},
 		AuditObj => $self
 	);
@@ -233,18 +233,18 @@ sub track {
 	
 	$self->init_sources(@$init_sources) if ($init_sources);
 	$self->init_all_sources if ($init_all);
-	return 1;
+	return $self;
 }
 
 sub BUILD {
 	my $self = shift;
 	
-	eval 'require ' . $self->change_context_class;
-	eval 'require ' . $self->changeset_context_class;
-	eval 'require ' . $self->source_context_class;
-	eval 'require ' . $self->column_context_class;
-	eval 'require ' . $self->collector_class;
-	eval 'require ' . $self->default_datapoint_class;
+	eval 'require ' . $self->change_context_class or die $@;
+	eval 'require ' . $self->changeset_context_class or die $@;
+	eval 'require ' . $self->source_context_class or die $@;
+	eval 'require ' . $self->column_context_class or die $@;
+	eval 'require ' . $self->collector_class or die $@;
+	eval 'require ' . $self->default_datapoint_class or die $@;
 	
 	$self->_init_datapoints;
 	$self->_bind_schema;
