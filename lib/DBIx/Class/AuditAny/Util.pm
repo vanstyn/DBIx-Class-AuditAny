@@ -4,6 +4,8 @@ package # Hide from PAUSE
 # VERSION
 # ABSTRACT: Util functions for DBIx::Class::AuditAny
 
+#*CORE::GLOBAL::die = sub { require Carp; Carp::confess };
+
 require Exporter;
 use Term::ANSIColor qw(:constants);
 use Data::Dumper;

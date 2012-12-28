@@ -135,11 +135,17 @@ sub get_context_column_infos {
 	return @cols;
 }
 
-sub init_schema_namespace {
+
+has 'schema_namespace_config', is => 'ro', isa => 'HashRef', init_arg => undef, lazy => 1,
+ default => sub {
 	my $self = shift;
 	
+	my $ColumnName = $self->AuditObj->get_datapoint_orig('column_name');
+	my $col_context_uniq_const = $ColumnName ? 
+		[ add_unique_constraint => ["change_id", ["change_id", $ColumnName->name]] ] : [];
+
 	my $namespace = $self->target_schema_namespace;
-	return DBIx::Class::AuditAny::Util::SchemaMaker->initialize(
+	return {
 		schema_namespace => $namespace,
 		results => {
 			$self->deploy_info_source_name => {
@@ -210,7 +216,8 @@ sub init_schema_namespace {
 				columns => $self->change_column_columns,
 				call_class_methods => [
 					set_primary_key => ['id'],
-					add_unique_constraint => ["change_id", ["change_id", "column"]],
+					@$col_context_uniq_const,
+					#add_unique_constraint => ["change_id", ["change_id", "column_name"]],
 					belongs_to => [
 						  $self->reverse_change_data_rel,
 							$namespace . '::' . $self->change_source_name,
@@ -220,6 +227,16 @@ sub init_schema_namespace {
 				]
 			}
 		}
+	};
+};
+
+sub init_schema_namespace {
+	my $self = shift;
+	
+	#scream($self->schema_namespace_config);
+	
+	return DBIx::Class::AuditAny::Util::SchemaMaker->initialize(
+		%{ $self->schema_namespace_config }
 	);
 }
 

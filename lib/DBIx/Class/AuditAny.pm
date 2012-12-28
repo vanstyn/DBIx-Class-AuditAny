@@ -139,25 +139,26 @@ sub _get_datapoint_configs {
 	return @configs;
 }
 
-
+# Default enabled datapoints if none are specified:
 sub _build_datapoints {[qw(
 change_ts
 action
 source
 pri_key_value
 column_name
-column_header
 old_value
 new_value
-old_display_value
-new_display_value
-column_changes_ascii
-column_changes_json
 )]};
 
 
 has '_datapoints', is => 'ro', isa => 'HashRef', default => sub {{}};
 has '_datapoints_context', is => 'ro', isa => 'HashRef', default => sub {{}};
+
+# Also index datapoints by 'original_name' which will be different from 'name'
+# whenever 'rename_datapoints' has been applied
+has '_datapoints_orig_names', is => 'ro', isa => 'HashRef', default => sub {{}};
+sub get_datapoint_orig { (shift)->_datapoints_orig_names->{(shift)} }
+
 sub add_datapoints {
 	my $self = shift;
 	my $class = $self->default_datapoint_class;
@@ -169,6 +170,7 @@ sub add_datapoints {
 		die "Duplicate datapoint name '" . $DataPoint->name . "'" if ($self->_datapoints->{$DataPoint->name});
 		$self->_datapoints->{$DataPoint->name} = $DataPoint;
 		$self->_datapoints_context->{$DataPoint->context}->{$DataPoint->name} = $DataPoint;
+		$self->_datapoints_orig_names->{$DataPoint->original_name} = $DataPoint;
 	}
 }
 sub all_datapoints { values %{(shift)->_datapoints} }
@@ -201,8 +203,11 @@ sub _init_datapoints {
 		
 		@{$self->datapoints} = map { $rename->{$_} || $_ } @{$self->datapoints};
 		
-		$_->{name} = (exists $rename->{$_->{name}} ? $rename->{$_->{name}} : $_->{name})
-			for (@configs);
+		foreach my $cnf (@configs) {
+			next unless (exists $rename->{$cnf->{name}});
+			$cnf->{original_name} = $cnf->{name};
+			$cnf->{name} = $rename->{$cnf->{name}};
+		}
 	}
 	
 	my %seen = ();
