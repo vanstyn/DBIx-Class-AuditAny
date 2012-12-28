@@ -14,6 +14,7 @@ has 'results', is => 'ro', isa => 'HashRef[HashRef]', required => 1;
 
 sub initialize {
 	my $self = shift;
+	$self = $self->new(@_) unless (ref $self);
 	
 	my $class = $self->schema_namespace;
 	die "class/namespace '$class' already defined!" if (package_exists $class);

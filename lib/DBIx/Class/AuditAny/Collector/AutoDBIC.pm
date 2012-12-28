@@ -5,6 +5,7 @@ extends 'DBIx::Class::AuditAny::Collector::DBIC';
 # VERSION
 
 use DBIx::Class::AuditAny::Util::SchemaMaker;
+use String::CamelCase qw(camelize decamelize);
 
 has 'sqlite_db', is => 'ro', isa => 'Str', required => 1;
 
@@ -26,9 +27,26 @@ has '+target_schema', default => sub {
 	return $schema;
 };
 
-has '+target_source', default => 'AuditChangeSet';
+has 'target_source', is => 'ro', isa => 'Str', lazy => 1, default => sub { (shift)->changeset_source_name };
+
+has 'changeset_source_name', 		is => 'ro', isa => 'Str', default => 'AuditChangeSet';
+has 'change_source_name', 			is => 'ro', isa => 'Str', default => 'AuditChange';
+has 'column_change_source_name',	is => 'ro', isa => 'Str', default => 'AuditChangeColumn';
+
+has 'changeset_table_name', is => 'ro', isa => 'Str', lazy => 1, 
+	default => sub { decamelize((shift)->changeset_source_name) };
+	
+has 'change_table_name', is => 'ro', isa => 'Str', lazy => 1, 
+	default => sub { decamelize((shift)->change_source_name) };
+	
+has 'column_change_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
+	default => sub { decamelize((shift)->column_change_source_name) };
+
 has '+change_data_rel', default => 'audit_changes';
 has '+column_data_rel', default => 'audit_change_columns';
+has 'reverse_change_data_rel', is => 'ro', isa => 'Str', default => 'change';
+has 'reverse_changeset_data_rel', is => 'ro', isa => 'Str', default => 'changeset';
+
 
 sub init_schema_namespace {
 	my $self = shift;
@@ -37,47 +55,47 @@ sub init_schema_namespace {
 	return DBIx::Class::AuditAny::Util::SchemaMaker->new(
 		schema_namespace => $namespace,
 		results => {
-			$self->target_source => {
-				table_name => 'audit_changeset',
+			$self->changeset_source_name => {
+				table_name => $self->changeset_table_name,
 				columns => $self->changeset_columns,
 				call_class_methods => [
 					set_primary_key => ['id'],
 					has_many => [
 						$self->change_data_rel,
-						$namespace . "::AuditChange",
+						$namespace . '::' . $self->change_source_name,
 						{ "foreign.changeset_id" => "self.id" },
 						{ cascade_copy => 0, cascade_delete => 0 },
 					]
 				]
 			},
-			AuditChange => {
-				table_name => 'audit_change',
+			$self->change_source_name => {
+				table_name => $self->change_table_name,
 				columns => $self->change_columns,
 				call_class_methods => [
 					set_primary_key => ['id'],
 					belongs_to => [
-						"changeset",
-						$namespace . "::AuditChangeSet",
+						$self->reverse_changeset_data_rel,
+						$namespace . '::' . $self->changeset_source_name,
 						{ id => "changeset_id" },
 						{ is_deferrable => 1, on_delete => "CASCADE", on_update => "CASCADE" },
 					],
 					has_many => [
 						$self->column_data_rel,
-						$namespace . "::AuditChangeColumn",
+						$namespace . '::' . $self->column_change_source_name,
 						{ "foreign.change_id" => "self.id" },
 						{ cascade_copy => 0, cascade_delete => 0 },
 					]
 				]
 			},
-			AuditChangeColumn => {
-				table_name => 'audit_change_column',
+			$self->column_change_source_name => {
+				table_name => $self->column_change_table_name,
 				columns => $self->change_column_columns,
 				call_class_methods => [
 					set_primary_key => ['id'],
 					add_unique_constraint => ["change_id", ["change_id", "column"]],
 					belongs_to => [
-						  "change",
-							$namespace . "::AuditChange",
+						  $self->reverse_change_data_rel,
+							$namespace . '::' . $self->change_source_name,
 							{ id => "change_id" },
 							{ is_deferrable => 1, on_delete => "CASCADE", on_update => "CASCADE" },
 					],

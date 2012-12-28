@@ -9,6 +9,7 @@ use Moose;
 use Class::MOP::Class;
 use Try::Tiny;
 use DBIx::Class::AuditAny::Util;
+use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 
 has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
 has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
@@ -67,38 +68,7 @@ has 'auto_finish', is => 'rw', isa => 'Bool', default => 0;
 sub _get_datapoint_configs {
 	my $self = shift;
 	
-	# Here are the built-in datapoints:
-	my @configs = (
-		{
-			name => 'schema', context => 'base',
-			method	=> sub { ref (shift)->schema }
-		}
-	);
-	
-	# direct passthroughs to the AuditAny object:
-	my @base_points = qw();
-	push @configs, { name => $_, context => 'base', method => $_  } for (@base_points);
-	
-	# direct passthroughs to the AuditSourceContext object:
-	my @source_points = qw(source class from table pri_key_column pri_key_count);
-	push @configs, { name => $_, context => 'source', method => $_  } for (@source_points);
-	
-	# direct passthroughs to the AuditChangeSetContext object:
-	my @set_points = qw(changeset_ts changeset_finish_ts changeset_elapsed);
-	push @configs, { name => $_, context => 'set', method => $_ } for (@set_points);
-	
-	# direct passthroughs to the AuditChangeContext object:
-	my @change_points = (
-		(qw(change_ts action action_id pri_key_value orig_pri_key_value)),
-		(qw(change_elapsed column_changes_json column_changes_ascii))
-	);
-	push @configs, { name => $_, context => 'change', method => $_ } for (@change_points);
-	
-	# direct passthroughs to the Column data hash (within the Change context object):
-	my @column_points = qw(column_header column_name old_value new_value old_display_value new_display_value);
-	push @configs, { name => $_, context => 'column', method => $_  } for (@column_points);
-	
-
+	my @configs = DBIx::Class::AuditAny::Util::BuiltinDatapoints->all_configs;
 	
 	# strip out any being redefined:
 	my %cust = map {$_->{name}=>1} @{$self->datapoint_configs};
@@ -127,6 +97,7 @@ new_display_value
 column_changes_ascii
 column_changes_json
 )]};
+
 
 has '_datapoints', is => 'ro', isa => 'HashRef', default => sub {{}};
 has '_datapoints_context', is => 'ro', isa => 'HashRef', default => sub {{}};

@@ -11,6 +11,14 @@ has 'context', is => 'ro', isa => 'Str', required => 1;
 has 'method', is => 'ro', isa => 'Str|CodeRef', required => 1;
 has 'user_defined', is => 'ro', isa => 'Bool', default => 0;
 
+# -- column_info defines the schema needed to store this datapoint within
+# a DBIC Result/table. Only used in collectors like Collector::AutoDBIC
+has 'column_info', is => 'ro', isa => 'HashRef', lazy => 1, 
+ default => sub { my $self = shift; $self->get_column_info->($self) };
+ 
+has 'get_column_info', is => 'ro', isa => 'CodeRef', lazy => 1,
+ default => sub {{ data_type => "varchar" }};
+# --
 
 sub BUILD {
 	my $self = shift;

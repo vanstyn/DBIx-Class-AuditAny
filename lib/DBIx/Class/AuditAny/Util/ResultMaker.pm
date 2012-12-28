@@ -15,6 +15,7 @@ has 'call_class_methods',	is => 'ro', isa => 'ArrayRef', default => sub {[]};
 
 sub initialize {
 	my $self = shift;
+	$self = $self->new(@_) unless (ref $self);
 	
 	my $class = $self->class_name;
 	die "class/namespace '$class' already defined!" if (package_exists $class);
