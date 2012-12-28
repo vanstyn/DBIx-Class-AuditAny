@@ -7,8 +7,8 @@ package # Hide from PAUSE
 use strict;
 use warnings;
 
-# This are just lists of predefined configs ($hashref) - constructor arguments 
-# for DBIx::Class::AuditAny::DataPoint->new(%$hashref)
+# This are just lists of predefined hashref configs ($cnf) - DataPoint constructor arg
+#  i.e. my $DataPoint = DBIx::Class::AuditAny::DataPoint->new(%$cnf);
 
 sub all_configs {(
 	&base_context,
@@ -136,10 +136,6 @@ sub change_context {
 sub column_context {
 	map {{ context => 'column', method => $_->{name}, %$_ }} (
 		{
-			name 			=> 'column_header', 
-			column_info	=>  { data_type => "varchar", is_nullable => 0, size => 128 } 
-		},
-		{
 			name 			=> 'column_name', 
 			column_info	=>  { data_type => "varchar", is_nullable => 0, size => 128 } 
 		},
@@ -151,14 +147,9 @@ sub column_context {
 			name 			=> 'new_value', 
 			column_info	=> { data_type => "mediumtext", is_nullable => 1 } 
 		},
-		{
-			name 			=> 'old_display_value', 
-			column_info	=> { data_type => "mediumtext", is_nullable => 1 } 
-		},
-		{
-			name 			=> 'new_display_value', 
-			column_info	=> { data_type => "mediumtext", is_nullable => 1 } 
-		},
+		
+		# TODO: add 'diff' datapoint
+		
 	)
 }
 

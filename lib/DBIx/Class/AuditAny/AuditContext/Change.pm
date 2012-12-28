@@ -6,6 +6,7 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 # ABSTRACT: Default 'Change' context object class for DBIx::Class::AuditAny
 
 use Time::HiRes qw(gettimeofday tv_interval);
+use DBIx::Class::AuditAny::Util;
 
 has 'SourceContext', is => 'ro', required => 1;
 has 'ChangeSetContext', isa => 'Maybe[Object]', is => 'ro', default => undef;
@@ -306,37 +307,5 @@ sub arr_arr_ascii_table {
 }
 
 
-### Special TableSpec-specific datapoints:
-
-
-has 'has_TableSpec', is => 'ro', isa => 'Bool', lazy => 1, default => sub {
-	my $self = shift;
-	return $self->class->can('TableSpec_get_conf') ? 1 : 0;
-};
-
-has 'fk_map', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-	my $self = shift;
-	return {} unless ($self->has_TableSpec);
-	return $self->class->TableSpec_get_conf('relationship_column_fks_map') || {};
-};
-
-has 'column_properties', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-	my $self = shift;
-	return {} unless ($self->has_TableSpec);
-	return { $self->class->TableSpec_get_conf('columns') };
-};
-
-# uniq() util func:
-# Returns a list with duplicates removed. If passed a single arrayref, duplicates are
-# removed from the arrayref in place, and the new list (contents) are returned.
-sub uniq {
-	my %seen = ();
-	return grep { !$seen{$_}++ } @_ unless (@_ == 1 and ref($_[0]) eq 'ARRAY');
-	return () unless (@{$_[0]} > 0);
-	# we add the first element to the end of the arg list to prevetn deep recursion in the
-	# case of nested single element arrayrefs
-	@{$_[0]} = uniq(@{$_[0]},$_[0]->[0]);
-	return @{$_[0]};
-}
 
 1;
