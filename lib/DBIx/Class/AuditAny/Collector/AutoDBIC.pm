@@ -52,7 +52,7 @@ sub init_schema_namespace {
 	my $self = shift;
 	
 	my $namespace = $self->target_schema_namespace;
-	return DBIx::Class::AuditAny::Util::SchemaMaker->new(
+	return DBIx::Class::AuditAny::Util::SchemaMaker->initialize(
 		schema_namespace => $namespace,
 		results => {
 			$self->changeset_source_name => {
@@ -102,7 +102,7 @@ sub init_schema_namespace {
 				]
 			}
 		}
-	)->initialize;
+	);
 }
 
 

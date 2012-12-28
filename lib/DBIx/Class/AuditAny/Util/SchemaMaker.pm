@@ -26,10 +26,10 @@ sub initialize {
 	
 	my @Results = sort keys %{$self->results};
 	
-	DBIx::Class::AuditAny::Util::ResultMaker->new(
+	DBIx::Class::AuditAny::Util::ResultMaker->initialize(
 		class_name => $class . '::' . $_,
 		%{$self->results->{$_}}
-	)->initialize for (@Results);
+	) for (@Results);
 		
 	$class->load_classes(@Results);
 	
