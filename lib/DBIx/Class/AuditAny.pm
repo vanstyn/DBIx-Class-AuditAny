@@ -66,6 +66,62 @@ has 'calling_action_function', is => 'ro', isa => 'HashRef[Bool]', default => su
 has 'active_changeset', is => 'rw', isa => 'Maybe[Object]', default => undef;
 has 'auto_finish', is => 'rw', isa => 'Bool', default => 0;
 
+has 'track_init_args', is => 'ro', isa => 'Maybe[HashRef]', default => undef;
+has 'build_init_args', is => 'ro', isa => 'HashRef', required => 1;
+
+around BUILDARGS => sub {
+	my $orig = shift;
+	my $class = shift;
+	my %opts = (ref($_[0]) eq 'HASH') ? %{ $_[0] } : @_; # <-- arg as hash or hashref
+
+	die 'Cannot specify build_init_args in new()' if (exists $opts{build_init_args});
+	$opts{build_init_args} = { %opts };
+	return $class->$orig(%opts);
+};
+
+sub track {
+	my $class = shift;
+	my %opts = (ref($_[0]) eq 'HASH') ? %{ $_[0] } : @_; # <-- arg as hash or hashref
+	die "track cannot be called on object instances" if (ref $class);
+	
+	# Record the track init arguments:
+	$opts{track_init_args} = { %opts };
+	
+	my $sources = exists $opts{track_sources} ? delete $opts{track_sources} : undef;
+	die 'track_sources must be an arrayref' if ($sources and ! ref($sources) eq 'ARRAY');
+	my $track_all = exists $opts{track_all_sources} ? delete $opts{track_all_sources} : undef;
+	die "track_sources and track_all_sources are incompatable" if ($sources && $track_all);
+	
+	my $init_sources = exists $opts{init_sources} ? delete $opts{init_sources} : undef;
+	die 'init_sources must be an arrayref' if ($init_sources and ! ref($init_sources) eq 'ARRAY');
+	my $init_all = exists $opts{init_all_sources} ? delete $opts{init_all_sources} : undef;
+	die "init_sources and init_all_sources are incompatable" if ($init_sources && $init_all);
+	
+	my $collect = exists $opts{collect} ? delete $opts{collect} : undef;
+	if ($collect) {
+		die "'collect' cannot be used with 'collector_params', 'collector_class' or 'collector'"
+			if ($opts{collector_params} || $opts{collector_class} || $opts{collector});
+			
+		$opts{collector_class} = 'Collector';
+		$opts{collector_params} = { collect_coderef => $collect };
+	}
+	
+	if($opts{collector}) {
+		die "'collector' cannot be used with 'collector_params', 'collector_class' or 'collect'"
+			if ($opts{collector_params} || $opts{collector_class} || $opts{collect});
+	}
+	
+	my $self = $class->new(%opts);
+	
+	$self->track_sources(@$sources) if ($sources);
+	$self->track_all_sources if ($track_all);
+	
+	$self->init_sources(@$init_sources) if ($init_sources);
+	$self->init_all_sources if ($init_all);
+	return $self;
+}
+
+
 sub _get_datapoint_configs {
 	my $self = shift;
 	
@@ -175,44 +231,7 @@ sub _init_datapoints {
 
 
 
-sub track {
-	my $class = shift;
-	my %opts = (ref($_[0]) eq 'HASH') ? %{ $_[0] } : @_; # <-- arg as hash or hashref
-	die "track cannot be called on object instances" if (ref $class);
-	
-	my $sources = exists $opts{track_sources} ? delete $opts{track_sources} : undef;
-	die 'track_sources must be an arrayref' if ($sources and ! ref($sources) eq 'ARRAY');
-	my $track_all = exists $opts{track_all_sources} ? delete $opts{track_all_sources} : undef;
-	die "track_sources and track_all_sources are incompatable" if ($sources && $track_all);
-	
-	my $init_sources = exists $opts{init_sources} ? delete $opts{init_sources} : undef;
-	die 'init_sources must be an arrayref' if ($init_sources and ! ref($init_sources) eq 'ARRAY');
-	my $init_all = exists $opts{init_all_sources} ? delete $opts{init_all_sources} : undef;
-	die "init_sources and init_all_sources are incompatable" if ($init_sources && $init_all);
-	
-	my $collect = exists $opts{collect} ? delete $opts{collect} : undef;
-	if ($collect) {
-		die "'collect' cannot be used with 'collector_params', 'collector_class' or 'collector'"
-			if ($opts{collector_params} || $opts{collector_class} || $opts{collector});
-			
-		$opts{collector_class} = 'Collector';
-		$opts{collector_params} = { collect_coderef => $collect };
-	}
-	
-	if($opts{collector}) {
-		die "'collector' cannot be used with 'collector_params', 'collector_class' or 'collect'"
-			if ($opts{collector_params} || $opts{collector_class} || $opts{collect});
-	}
-	
-	my $self = $class->new(%opts);
-	
-	$self->track_sources(@$sources) if ($sources);
-	$self->track_all_sources if ($track_all);
-	
-	$self->init_sources(@$init_sources) if ($init_sources);
-	$self->init_all_sources if ($init_all);
-	return $self;
-}
+
 
 sub BUILD {
 	my $self = shift;

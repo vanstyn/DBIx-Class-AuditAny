@@ -8,6 +8,7 @@ use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::SchemaMaker;
 use String::CamelCase qw(decamelize);
 use Digest::MD5 qw(md5_hex);
+use Data::Dumper;
 
 has 'connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
 	my $self = shift;
@@ -162,6 +163,10 @@ sub init_schema_namespace {
 						datetime_undef_if_invalid => 1, 
 						is_nullable => 0 
 					},
+					auditany_params => {
+						data_type	=> 'mediumtext',
+						is_nullable	=> 0
+					},
 				],
 				call_class_methods => [
 					set_primary_key => ['md5'],
@@ -234,11 +239,19 @@ sub deploy_schema {
 	catch {
 		# Assume exception is due to not being deployed yet and try to deploy:
 		$schema->deploy;
+		
+		# Save the actual AuditAny params, ->track() or ->new():
+		local $Data::Dumper::Maxdepth = 3;
+		my $auditany_params = $self->AuditObj->track_init_args ?
+			Data::Dumper->Dump([$self->AuditObj->track_init_args],['*track']) :
+			Data::Dumper->Dump([$self->AuditObj->build_init_args],['*new']);
+			
 		$Rs->create({
-			md5				=> $md5,
-			comment			=> 'DO NOT REMOVE THIS ROW',
-			deployed_ddl	=> $deploy_statements,
-			deployed_ts		=> $self->AuditObj->get_dt
+			md5					=> $md5,
+			comment				=> 'DO NOT REMOVE THIS ROW',
+			deployed_ddl		=> $deploy_statements,
+			deployed_ts			=> $self->AuditObj->get_dt,
+			auditany_params	=> $auditany_params
 		});
 	};
 	
