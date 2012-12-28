@@ -2,6 +2,7 @@ package # Hide from PAUSE
     DBIx::Class::AuditAny::Util::SchemaMaker;
 
 # VERSION
+# ABSTRACT: Util package for on-the-fly creation of DBIC Schema classes
 
 use Moose;
 require Class::MOP::Class;

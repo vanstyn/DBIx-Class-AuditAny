@@ -2,6 +2,7 @@ package DBIx::Class::AuditAny::DataPoint;
 use Moose;
 
 # VERSION
+# ABSTRACT: Object class for AuditAny datapoint configs
 
 use Switch qw(switch);
 

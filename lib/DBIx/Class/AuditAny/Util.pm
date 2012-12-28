@@ -1,6 +1,9 @@
 package # Hide from PAUSE 
      DBIx::Class::AuditAny::Util;
 
+# VERSION
+# ABSTRACT: Util functions for DBIx::Class::AuditAny
+
 require Exporter;
 use Term::ANSIColor qw(:constants);
 use Data::Dumper;

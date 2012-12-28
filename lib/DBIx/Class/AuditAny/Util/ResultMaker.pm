@@ -2,6 +2,7 @@ package # Hide from PAUSE
     DBIx::Class::AuditAny::Util::ResultMaker;
 
 # VERSION
+# ABSTRACT: Util package for on-the-fly creation of DBIC Result classes
 
 use Moose;
 require Class::MOP::Class;

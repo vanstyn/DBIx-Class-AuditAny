@@ -3,8 +3,7 @@ use Moose;
 extends 'DBIx::Class::AuditAny::AuditContext';
 
 # VERSION
-
-# ***** PRIVATE Object Class *****
+# ABSTRACT: Default 'Column' context object class for DBIx::Class::AuditAny
 
 has 'ChangeContext', is => 'ro', required => 1;
 has 'column_name', is => 'ro', isa => 'Str', required => 1;

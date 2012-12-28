@@ -3,10 +3,9 @@ use Moose;
 extends 'DBIx::Class::AuditAny::AuditContext';
 
 # VERSION
+# ABSTRACT: Default 'ChangeSet' context object class for DBIx::Class::AuditAny
 
 use Time::HiRes qw(gettimeofday tv_interval);
-
-# ***** PRIVATE Object Class *****
 
 sub _build_tiedContexts { [] }
 sub _build_local_datapoint_data { 

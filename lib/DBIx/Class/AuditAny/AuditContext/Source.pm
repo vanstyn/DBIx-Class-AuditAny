@@ -3,8 +3,7 @@ use Moose;
 extends 'DBIx::Class::AuditAny::AuditContext';
 
 # VERSION
-
-# ***** PRIVATE Object Class *****
+# ABSTRACT: Default 'Source' context object class for DBIx::Class::AuditAny
 
 has 'ResultSource', is => 'ro', required => 1;
 has 'source', is => 'ro', lazy => 1, default => sub { (shift)->ResultSource->source_name };

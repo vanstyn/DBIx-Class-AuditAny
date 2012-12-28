@@ -3,7 +3,7 @@ use Moose;
 extends 'DBIx::Class::AuditAny::Collector';
 
 # VERSION
-
+# ABSTRACT: Collector class for recording AuditAny changes in DBIC schemas
 
 has 'target_schema', is => 'ro', isa => 'Object', lazy => 1, default => sub { (shift)->AuditObj->schema };
 

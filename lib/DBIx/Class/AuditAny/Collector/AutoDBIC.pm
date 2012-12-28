@@ -3,6 +3,7 @@ use Moose;
 extends 'DBIx::Class::AuditAny::Collector::DBIC';
 
 # VERSION
+# ABSTRACT: Collector class for recording AuditAny changes in auto-generated DBIC schemas
 
 use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::SchemaMaker;

@@ -1,9 +1,10 @@
-package DBIx::Class::AuditAny::AuditContext;
+package # Hide from PAUSE 
+     DBIx::Class::AuditAny::AuditContext;
+
 use Moose;
 
 # VERSION
-
-# ***** PRIVATE Object Class *****
+# ABSTRACT: Base class for context objects in DBIx::Class::AuditAny
 
 has 'AuditObj', is => 'ro', isa => 'DBIx::Class::AuditAny', required => 1;
 

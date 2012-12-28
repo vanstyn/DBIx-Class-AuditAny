@@ -2,6 +2,8 @@ package # Hide from PAUSE
     DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 
 # VERSION
+# ABSTRACT: Built-in datapoint configs for DBIx::Class::AuditAny
+
 use strict;
 use warnings;
 
