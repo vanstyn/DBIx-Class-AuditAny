@@ -36,5 +36,6 @@ sub schema { ref (shift)->AuditObj->schema };
 sub primary_key_separator { (shift)->AuditObj->primary_key_separator };
 sub get_context_datapoints { (shift)->AuditObj->get_context_datapoints(@_) };
 sub get_context_datapoint_names { (shift)->AuditObj->get_context_datapoint_names(@_) };
+sub get_dt { (shift)->AuditObj->get_dt(@_) };
 
 1;

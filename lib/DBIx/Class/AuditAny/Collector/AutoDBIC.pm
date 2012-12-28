@@ -6,7 +6,8 @@ extends 'DBIx::Class::AuditAny::Collector::DBIC';
 
 use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::SchemaMaker;
-use String::CamelCase qw(camelize decamelize);
+use String::CamelCase qw(decamelize);
+use Digest::MD5 qw(md5_hex);
 
 has 'connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
 	my $self = shift;
@@ -27,7 +28,7 @@ has '+target_schema', default => sub {
 	
 	my $class = $self->init_schema_namespace;
 	my $schema = $class->connect(@{$self->connect});
-	$schema->deploy if ($self->auto_deploy);
+	$self->deploy_schema($schema) if ($self->auto_deploy);
 	
 	return $schema;
 };
@@ -38,6 +39,7 @@ has 'target_source', is => 'ro', isa => 'Str', lazy => 1,
 has 'changeset_source_name', 		is => 'ro', isa => 'Str', default => 'AuditChangeSet';
 has 'change_source_name', 			is => 'ro', isa => 'Str', default => 'AuditChange';
 has 'column_change_source_name',	is => 'ro', isa => 'Str', default => 'AuditChangeColumn';
+has 'deploy_info_source_name',	is => 'ro', isa => 'Str', default => 'DeployInfo';
 
 has 'changeset_table_name', is => 'ro', isa => 'Str', lazy => 1, 
  default => sub { decamelize((shift)->changeset_source_name) };
@@ -47,6 +49,9 @@ has 'change_table_name', is => 'ro', isa => 'Str', lazy => 1,
 	
 has 'column_change_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
  default => sub { decamelize((shift)->column_change_source_name) };
+
+has 'deploy_info_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
+ default => sub { decamelize((shift)->deploy_info_source_name) };
 
 has '+change_data_rel', default => 'audit_changes';
 has '+column_data_rel', default => 'audit_change_columns';
@@ -135,6 +140,33 @@ sub init_schema_namespace {
 	return DBIx::Class::AuditAny::Util::SchemaMaker->initialize(
 		schema_namespace => $namespace,
 		results => {
+			$self->deploy_info_source_name => {
+				table_name => $self->deploy_info_table_name,
+				columns => [
+					md5 => { 
+						data_type => "char", 
+						is_nullable => 0, 
+						size => 32 
+					},
+					comment => { 
+						data_type => "varchar", 
+						is_nullable => 0, 
+						size => 255 
+					},
+					deployed_ddl => {
+						data_type	=> 'mediumtext',
+						is_nullable	=> 0
+					},
+					deployed_ts	=> { 
+						data_type => "datetime", 
+						datetime_undef_if_invalid => 1, 
+						is_nullable => 0 
+					},
+				],
+				call_class_methods => [
+					set_primary_key => ['md5'],
+				]
+			},
 			$self->changeset_source_name => {
 				table_name => $self->changeset_table_name,
 				columns => $self->changeset_columns,
@@ -183,6 +215,66 @@ sub init_schema_namespace {
 			}
 		}
 	);
+}
+
+
+sub deploy_schema {
+	my $self = shift;
+	my $schema = shift;
+	
+	my $deploy_statements = $schema->deployment_statements;
+	my $md5 = $self->get_clean_md5($deploy_statements);
+	my $Rs = $schema->resultset($self->deploy_info_source_name);
+	my $table = $Rs->result_source->from;
+	my $deployRow;
+	
+	try {
+		$deployRow = $Rs->find($md5);
+	}
+	catch {
+		# Assume exception is due to not being deployed yet and try to deploy:
+		$schema->deploy;
+		$Rs->create({
+			md5				=> $md5,
+			comment			=> 'DO NOT REMOVE THIS ROW',
+			deployed_ddl	=> $deploy_statements,
+			deployed_ts		=> $self->AuditObj->get_dt
+		});
+	};
+	
+	# If we've already been deployed and the ddl checksum matches:
+	return 1 if ($deployRow);
+	
+	my $count = $Rs->count;
+	my $dsn = $self->connect->[0];
+	
+	die "Database error; deploy_info table ('$table') exists but is empty in audit database '$dsn'"
+		unless ($count > 0);
+		
+	die "Database error; multiple rows in deploy_info table ('$table') in audit database '$dsn'"
+		if ($count > 1);
+	
+	my $exist_md5 = $Rs->first->md5 or die "Database error; found deploy_info row in table '$table' " .
+	 "in audit database '$dsn', but it appears to be corrupt (no md5 checksum).";
+	 
+	return 1 if ($md5 eq $exist_md5);
+	
+	die "\n\n" . join("\n",
+	 "  The selected audit database '$dsn' already has a",
+	 "  deployed Collector::AutoDBIC schema (md5 checksum: $exist_md5) but it does",
+	 "  not match the current auto-generated schema (md5 checksum: $md5).",
+	 "  This probably means datapoints or other options have been changed since this AutoDBIC ",
+	 "  audit database was deployed. If you're not worried about existing audit logs, you can ",
+	 "  fix this error by simply clearing/deleting the audit database so it can be reinitialized."
+	) . "\n\n";
+}
+
+# Need to strip out comments and blank lines to make sure the md5s will be consistent
+sub get_clean_md5 {
+	my $self = shift;
+	my $deploy_statements = shift;
+	my $clean = join("\n", grep { ! /^\-\-/ && ! /^\s*$/ } split(/\r?\n/,$deploy_statements) );
+	return md5_hex($clean);
 }
 
 1;

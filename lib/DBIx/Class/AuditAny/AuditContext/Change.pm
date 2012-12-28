@@ -5,9 +5,6 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 # VERSION
 
 use Time::HiRes qw(gettimeofday tv_interval);
-sub get_dt { DateTime->now( time_zone => 'local' ) }
-
-use Text::TabularDisplay;
 
 # ***** PRIVATE Object Class *****
 
@@ -62,7 +59,7 @@ has 'orig_pri_key_value', is => 'ro', isa => 'Maybe[Str]', lazy => 1, default =>
 has 'change_ts', is => 'ro', isa => 'DateTime', lazy => 1, default => sub {
 	my $self = shift;
 	$self->enforce_unexecuted;
-	return &get_dt;
+	return $self->get_dt;
 };
 
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };

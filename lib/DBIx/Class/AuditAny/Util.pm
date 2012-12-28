@@ -5,9 +5,10 @@ require Exporter;
 use Term::ANSIColor qw(:constants);
 use Data::Dumper;
 require Module::Runtime;
+use Try::Tiny;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(scream scream_color resolve_localclass package_exists);
+our @EXPORT = qw(scream scream_color resolve_localclass package_exists try catch);
 
 sub scream {
 	local $_ = caller_data(3);

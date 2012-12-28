@@ -4,9 +4,7 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 
 # VERSION
 
-use DateTime;
 use Time::HiRes qw(gettimeofday tv_interval);
-sub get_dt { DateTime->now( time_zone => 'local' ) }
 
 # ***** PRIVATE Object Class *****
 
@@ -19,11 +17,18 @@ sub _build_local_datapoint_data {
 has 'changes', is => 'ro', isa => 'ArrayRef', default => sub {[]};
 has 'finished', is => 'rw', isa => 'Bool', default => 0, init_arg => undef;
 
-has 'changeset_ts', is => 'ro', isa => 'DateTime', default => sub { &get_dt };
+has 'changeset_ts', is => 'ro', isa => 'DateTime', lazy => 1, default => sub { (shift)->get_dt };
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
 
 has 'changeset_finish_ts', is => 'rw', isa => 'Maybe[DateTime]', default => undef;
 has 'changeset_elapsed', is => 'rw', default => undef;
+
+sub BUILD {
+	my $self = shift;
+	
+	# Init
+	$self->changeset_ts;
+}
 
 sub add_changes { push @{(shift)->changes}, @_ }
 sub all_changes { @{(shift)->changes} }
@@ -41,7 +46,7 @@ sub mark_finished {
 	my $self = shift;
 	return if ($self->finished);
 	
-	$self->changeset_finish_ts(&get_dt);
+	$self->changeset_finish_ts($self->get_dt);
 	$self->changeset_elapsed(tv_interval($self->start_timeofday));
 	
 	return $self->finished(1);

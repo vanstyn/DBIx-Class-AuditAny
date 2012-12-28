@@ -7,14 +7,18 @@ use Moose;
 # ABSTRACT: Flexible change tracking for DBIx::Class schemas
 
 use Class::MOP::Class;
-use Try::Tiny;
+use DateTime;
 use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
+
+has 'time_zone', is => 'ro', isa => 'Str', default => 'local';
+sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
 has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
 has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
 has 'track_actions', is => 'ro', isa => 'ArrayRef', default => sub { [qw(insert update delete)] };
-has 'allow_multiple_auditors', is => 'ro', isa => 'Bool', default => 0; 
+has 'allow_multiple_auditors', is => 'ro', isa => 'Bool', default => 0;
+
 
 has 'source_context_class', is => 'ro', default => 'AuditContext::Source';
 has 'change_context_class', is => 'ro', default => 'AuditContext::Change';
@@ -26,9 +30,11 @@ has 'collector_class', is => 'ro', isa => 'Str';
 around $_ => sub { 
 	my $orig = shift; my $self = shift; 
 	resolve_localclass $self->$orig(@_);
-} for 
-qw(source_context_class change_context_class changeset_context_class 
-column_context_class default_datapoint_class collector_class);
+} for qw(
+ source_context_class change_context_class
+ changeset_context_class column_context_class
+ default_datapoint_class collector_class
+);
 
 has 'collector_params', is => 'ro', isa => 'HashRef', default => sub {{}};
 has 'primary_key_separator', is => 'ro', isa => 'Str', default => '|~|';
@@ -47,8 +53,6 @@ has 'collector', is => 'ro', lazy => 1, default => sub {
 	);
 };
 
-
-
 # Any sources within the tracked schema that the collector is writing to; these
 # sources are not allowed to be tracked because it would create infinite recursion:
 has 'log_sources', is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, init_arg => undef, default => sub {
@@ -56,10 +60,7 @@ has 'log_sources', is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, init_arg => un
 	return $self->collector->writes_bound_schema_sources;
 };
 
-
-
 has 'tracked_action_functions', is => 'ro', isa => 'HashRef', default => sub {{}};
-
 has 'tracked_sources', is => 'ro', isa => 'HashRef[Str]', default => sub {{}};
 has 'calling_action_function', is => 'ro', isa => 'HashRef[Bool]', default => sub {{}};
 has 'active_changeset', is => 'rw', isa => 'Maybe[Object]', default => undef;
@@ -138,8 +139,6 @@ sub _init_datapoints {
 	my $self = shift;
 	
 	my @configs = $self->_get_datapoint_configs;
-	
-	
 	
 	if($self->rename_datapoints) {
 		my $rename = $self->rename_datapoints;
