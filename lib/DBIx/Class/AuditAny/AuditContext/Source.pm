@@ -8,8 +8,8 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 has 'ResultSource', is => 'ro', required => 1;
 has 'source', is => 'ro', lazy => 1, default => sub { (shift)->ResultSource->source_name };
 has 'class', is => 'ro', lazy => 1, default => sub { $_[0]->SchemaObj->class($_[0]->source) };
-has 'from', is => 'ro', lazy => 1, default => sub { (shift)->ResultSource->source_name };
-has 'table', is => 'ro', lazy => 1, default => sub { (shift)->class->table };
+has 'from_name', is => 'ro', lazy => 1, default => sub { (shift)->ResultSource->from };
+has 'table_name', is => 'ro', lazy => 1, default => sub { (shift)->class->table };
 
 sub primary_columns { return (shift)->ResultSource->primary_columns }
 

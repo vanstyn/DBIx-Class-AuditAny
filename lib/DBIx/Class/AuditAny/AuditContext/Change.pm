@@ -256,7 +256,8 @@ has 'column_changes_ascii', is => 'ro', isa => 'Str', lazy => 1, default => sub 
 has 'column_changes_json', is => 'ro', isa => 'Str', lazy => 1, default => sub {
 	my $self = shift;
 	my $table = $self->column_changes_arr_arr_table;
-	return encode_json($table);
+	require JSON;
+	return JSON::encode_json($table);
 };
 
 

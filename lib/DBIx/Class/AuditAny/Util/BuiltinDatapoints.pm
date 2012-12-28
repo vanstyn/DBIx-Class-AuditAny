@@ -46,11 +46,11 @@ sub source_context {
 			column_info	=> { data_type => "varchar", is_nullable => 0, size => 255 } 
 		},
 		{
-			name 			=> 'from', 
+			name 			=> 'from_name', 
 			column_info	=> { data_type => "varchar", is_nullable => 0, size => 128 } 
 		},
 		{
-			name 			=> 'table', 
+			name 			=> 'table_name', 
 			column_info	=> { data_type => "varchar", is_nullable => 0, size => 128 } 
 		},
 		{

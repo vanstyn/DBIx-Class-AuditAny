@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-# t/005_auto_dbic_collector_defaults.t - test using mostly defaults
+# t/006_auto_dbic_collector_all_datapoints.t - test using all built-in datapoints
 
 use strict;
 use warnings;
@@ -9,6 +9,8 @@ use DBICx::TestDatabase 0.04;
 use lib qw(t/lib);
 
 plan tests => 12;
+
+use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 
 use_ok( 'DBIx::Class::AuditAny' );
 
@@ -24,8 +26,9 @@ ok(
 		track_all_sources => 1,
 		collector_class => 'Collector::AutoDBIC',
 		collector_params => {
-			sqlite_db => 't/var/audit2.db',
+			sqlite_db => 't/var/audit3.db',
 		},
+		datapoints => [ map { $_->{name} } DBIx::Class::AuditAny::Util::BuiltinDatapoints->all_configs ] 
 	),
 	"Setup tracker configured to write to auto configured schema"
 );
