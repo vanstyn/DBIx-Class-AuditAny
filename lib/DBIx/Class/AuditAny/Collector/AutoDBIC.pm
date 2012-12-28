@@ -4,10 +4,18 @@ extends 'DBIx::Class::AuditAny::Collector::DBIC';
 
 # VERSION
 
+use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::SchemaMaker;
 use String::CamelCase qw(camelize decamelize);
 
-has 'sqlite_db', is => 'ro', isa => 'Str', required => 1;
+has 'connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
+	my $self = shift;
+	my $db = $self->sqlite_db or die "no 'connect' or 'sqlite_db' specified.";
+	return [ "dbi:SQLite:dbname=$db","","", { AutoCommit => 1 } ];
+};
+
+has 'sqlite_db', is => 'ro', isa => 'Maybe[Str]', default => undef;
+has 'auto_deploy', is => 'ro', isa => 'Bool', default => 1;
 
 has 'target_schema_namespace', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
@@ -18,35 +26,107 @@ has '+target_schema', default => sub {
 	my $self = shift;
 	
 	my $class = $self->init_schema_namespace;
-	
-	my $db = $self->sqlite_db;
-	my $schema = $class->connect("dbi:SQLite:dbname=$db","","", { AutoCommit => 1 });
-	
-	$schema->deploy;
+	my $schema = $class->connect(@{$self->connect});
+	$schema->deploy if ($self->auto_deploy);
 	
 	return $schema;
 };
 
-has 'target_source', is => 'ro', isa => 'Str', lazy => 1, default => sub { (shift)->changeset_source_name };
+has 'target_source', is => 'ro', isa => 'Str', lazy => 1, 
+ default => sub { (shift)->changeset_source_name };
 
 has 'changeset_source_name', 		is => 'ro', isa => 'Str', default => 'AuditChangeSet';
 has 'change_source_name', 			is => 'ro', isa => 'Str', default => 'AuditChange';
 has 'column_change_source_name',	is => 'ro', isa => 'Str', default => 'AuditChangeColumn';
 
 has 'changeset_table_name', is => 'ro', isa => 'Str', lazy => 1, 
-	default => sub { decamelize((shift)->changeset_source_name) };
+ default => sub { decamelize((shift)->changeset_source_name) };
 	
 has 'change_table_name', is => 'ro', isa => 'Str', lazy => 1, 
-	default => sub { decamelize((shift)->change_source_name) };
+ default => sub { decamelize((shift)->change_source_name) };
 	
 has 'column_change_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
-	default => sub { decamelize((shift)->column_change_source_name) };
+ default => sub { decamelize((shift)->column_change_source_name) };
 
 has '+change_data_rel', default => 'audit_changes';
 has '+column_data_rel', default => 'audit_change_columns';
 has 'reverse_change_data_rel', is => 'ro', isa => 'Str', default => 'change';
 has 'reverse_changeset_data_rel', is => 'ro', isa => 'Str', default => 'changeset';
 
+has 'changeset_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+ default => sub {
+	my $self = shift;
+	return [
+		id => {
+			data_type => "integer",
+			extra => { unsigned => 1 },
+			is_auto_increment => 1,
+			is_nullable => 0,
+		},
+		$self->get_context_column_infos(qw(base set))
+	];
+};
+
+has 'change_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+ default => sub {
+	my $self = shift;
+	return [
+		id => {
+			data_type => "integer",
+			extra => { unsigned => 1 },
+			is_auto_increment => 1,
+			is_nullable => 0,
+		}, 
+		changeset_id => {
+			data_type => "integer",
+			extra => { unsigned => 1 },
+			is_foreign_key => 1,
+			is_nullable => 0,
+		},
+		$self->get_context_column_infos(qw(source change))
+	];
+};
+
+has 'change_column_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+ default => sub {
+	my $self = shift;
+	return [
+		id => {
+			data_type => "integer",
+			extra => { unsigned => 1 },
+			is_auto_increment => 1,
+			is_nullable => 0,
+		}, 
+		change_id => {
+			data_type => "integer",
+			extra => { unsigned => 1 },
+			is_foreign_key => 1,
+			is_nullable => 0,
+		},
+		$self->get_context_column_infos(qw(column))
+	];
+};
+
+# Gets and validates DBIC column configs per supplied datapoint contexts
+sub get_context_column_infos {
+	my $self = shift;
+	my @DataPoints = $self->AuditObj->get_context_datapoints(@_);
+	return () unless (scalar @DataPoints > 0);
+	
+	my %reserved 		= map {$_=>1} qw(id changeset_id change_id);
+	my %no_accessor 	= map {$_=>1} qw(new meta);
+	
+	my @cols = ();
+	foreach my $DataPoint (@DataPoints) {
+		my $name = $DataPoint->name;
+		my $info = $DataPoint->column_info;
+		$reserved{$name}		and die "Bad datapoint name '$name' - reserved keyword.";
+		$no_accessor{$name}	and $info->{accessor} = undef;
+		push @cols, ( $name => $info );
+	}
+	
+	return @cols;
+}
 
 sub init_schema_namespace {
 	my $self = shift;
@@ -104,83 +184,5 @@ sub init_schema_namespace {
 		}
 	);
 }
-
-
-sub changeset_columns {
-	my $self = shift;
-	return [
-		"id",
-		{
-		 data_type => "integer",
-		 extra => { unsigned => 1 },
-		 is_auto_increment => 1,
-		 is_nullable => 0,
-		},
-		"changeset_ts",
-		{
-		 data_type => "datetime",
-		 datetime_undef_if_invalid => 1,
-		 is_nullable => 0,
-		},
-		"total_elapsed",
-		{ data_type => "varchar", is_nullable => 1, size => 16 },
-	];
-}
-
-sub change_columns {
-	my $self = shift;
-	return [
-		"id",
-		{
-		 data_type => "integer",
-		 extra => { unsigned => 1 },
-		 is_auto_increment => 1,
-		 is_nullable => 0,
-		},
-		"changeset_id",
-		{
-		 data_type => "integer",
-		 extra => { unsigned => 1 },
-		 is_foreign_key => 1,
-		 is_nullable => 0,
-		},
-		"elapsed",
-		{ data_type => "varchar", is_nullable => 1, size => 16 },
-		"action",
-		{ data_type => "char", is_nullable => 0, size => 6 },
-		"source",
-		{ data_type => "varchar", is_nullable => 0, size => 50 },
-		"row_key",
-		{ data_type => "varchar", is_nullable => 0, size => 255 },
-	];
-}
-
-
-sub change_column_columns {
-	my $self = shift;
-	return [
-		"id",
-		{
-		 data_type => "integer",
-		 extra => { unsigned => 1 },
-		 is_auto_increment => 1,
-		 is_nullable => 0,
-		},
-		"change_id",
-		{
-		 data_type => "integer",
-		 extra => { unsigned => 1 },
-		 is_foreign_key => 1,
-		 is_nullable => 0,
-		},
-		"column",
-		{ data_type => "varchar", is_nullable => 0, size => 32 },
-		"old",
-		{ data_type => "mediumtext", is_nullable => 1 },
-		"new",
-		{ accessor => undef, data_type => "mediumtext", is_nullable => 1 },
-	];
-}
-
 
 1;
