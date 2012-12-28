@@ -5,17 +5,34 @@ package # Hide from PAUSE
 use strict;
 use warnings;
 
+# This are just lists of predefined configs ($hashref) - constructor arguments 
+# for DBIx::Class::AuditAny::DataPoint->new(%$hashref)
+
+sub all_configs {(
+	&base_context,
+	&source_context,
+	&set_context,
+	&change_context,
+	&column_context,
+)}
+
 
 sub base_context {
 	map {{ context => 'base', %$_ }} (
 		{
 			name 			=> 'schema', 
-			method		=> sub { ref (shift)->schema },
+			method		=> sub { ref((shift)->AuditObj->schema) },
 			column_info	=> { data_type => "varchar", is_nullable => 0, size => 255 } 
+		},
+		{
+			name 			=> 'schema_ver', 
+			method		=> sub { (shift)->AuditObj->schema->schema_version },
+			column_info	=> { data_type => "varchar", is_nullable => 1, size => 16 } 
 		}
 	)
 }
 
+# set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
 sub source_context {
 	map {{ context => 'source', method => $_->{name}, %$_ }} (
 		{
@@ -45,7 +62,7 @@ sub source_context {
 	)
 }
 
-
+# set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
 sub set_context {
 	map {{ context => 'set', method => $_->{name}, %$_ }} (
 		{
@@ -71,6 +88,7 @@ sub set_context {
 	)
 }
 
+# set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
 sub change_context {
 	map {{ context => 'change', method => $_->{name}, %$_ }} (
 		{
@@ -112,7 +130,7 @@ sub change_context {
 	)
 }
 
-
+# set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
 sub column_context {
 	map {{ context => 'column', method => $_->{name}, %$_ }} (
 		{
@@ -141,15 +159,6 @@ sub column_context {
 		},
 	)
 }
-
-
-sub all_configs {(
-	&base_context,
-	&source_context,
-	&set_context,
-	&change_context,
-	&column_context,
-)}
 
 
 1;

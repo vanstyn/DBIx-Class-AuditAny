@@ -27,7 +27,7 @@ ok(
 			sqlite_db => 't/var/audit.db',
 		},
 		datapoints => [
-			(qw(changeset_ts changeset_elapsed)),
+			(qw(schema schema_ver changeset_ts changeset_elapsed)),
 			(qw(change_elapsed action source pri_key_value)),
 			(qw(column_name old_value new_value)),
 		],
