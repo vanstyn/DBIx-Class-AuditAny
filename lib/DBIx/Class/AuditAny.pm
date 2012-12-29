@@ -644,12 +644,19 @@ sub record_change {
 
 __END__
 
+=head1 NAME
+
+DBIx::Class::AuditAny - Flexible change tracking framework for DBIx::Class
+
 =head1 SYNOPSIS
+
+Record all changes into a *separate*, auto-generated and initialized SQLite schema/db 
+with default datapoints (Quickest/simplest usage):
+
+Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
 
  use DBIx::Class::AuditAny;
 
- # Record all changes into a separate, auto-generated and initialized SQLite schema/db 
- # with default datapoints (Quickest/simplest usage):
  my $Auditor = DBIx::Class::AuditAny->track(
    schema => $schema, 
    track_all_sources => 1,
@@ -658,10 +665,12 @@ __END__
      sqlite_db => 'db/audit.db',
    }
  );
- 
- 
- # Record all changes - into specified target sources within the same/tracked 
- # schema - using specific datapoints:
+
+Record all changes - into specified target sources within the *same*/tracked 
+schema - using specific datapoints:
+
+Uses the Collector L<DBIx::Class::AuditAny::Collector::DBIC>
+
  DBIx::Class::AuditAny->track(
    schema => $schema, 
    track_all_sources => 1,
@@ -679,9 +688,12 @@ __END__
  );
  
  
- # Dump raw change data for specific sources (Artist and Album) to a file,
- # ignore immutable flags in the schema/result classes, and allow more than 
- # one DBIx::Class::AuditAny Auditor to be attached to the same schema object:
+Dump raw change data for specific sources (Artist and Album) to a file,
+ignore immutable flags in the schema/result classes, and allow more than 
+one DBIx::Class::AuditAny Auditor to be attached to the same schema object:
+
+Uses 'collect' sugar param to setup a bare-bones CodeRef Collector (L<DBIx::Class::AuditAny::Collector>)
+
  my $Auditor = DBIx::Class::AuditAny->track(
    schema => $schema, 
    track_sources => [qw(Artist Album)],
@@ -695,11 +707,12 @@ __END__
      # Do other custom stuff...
    }
  );
- 
- 
- # Record all updates (but *not* inserts/deletes) - into specified target sources 
- # within the same/tracked schema - using specific datapoints, including user-defined 
- # datapoints and built-in datapoints with custom names:
+
+
+Record all updates (but *not* inserts/deletes) - into specified target sources 
+within the same/tracked schema - using specific datapoints, including user-defined 
+datapoints and built-in datapoints with custom names:
+
  DBIx::Class::AuditAny->track(
    schema => CoolCatalystApp->model('Schema')->schema, 
    track_all_sources => 1,
@@ -742,10 +755,11 @@ __END__
      column_name => 'column',
    },
  );
- 
- 
- # Record all changes into a user-defined custom Collector class - using
- # default datapoints:
+
+
+Record all changes into a user-defined custom Collector class - using
+default datapoints:
+
  my $Auditor = DBIx::Class::AuditAny->track(
    schema => $schema, 
    track_all_sources => 1,
@@ -755,9 +769,10 @@ __END__
      anything => $val
    }
  );
- 
- 
- # Access/query the audit db of Collector::DBIC and Collector::AutoDBIC collectors:
+
+
+Access/query the audit db of Collector::DBIC and Collector::AutoDBIC collectors:
+
  my $audit_schema = $Auditor->collector->target_schema;
  $audit_schema->resultset('AuditChangeSet')->search({...});
  
@@ -819,6 +834,8 @@ Inspired in part by the Catalyst Context object design...
 =head1 TODO
 
 =over 4
+
+=item Enable tracking multi-primary-key sources (code currently disabled)
 
 =item Write lots more tests 
 
