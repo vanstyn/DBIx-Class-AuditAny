@@ -655,6 +655,8 @@ with default datapoints (Quickest/simplest usage):
 
 Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
 
+ my $schema = My::Schema->connect(@connect);
+
  use DBIx::Class::AuditAny;
 
  my $Auditor = DBIx::Class::AuditAny->track(
@@ -792,13 +794,112 @@ In progress documentation... In the mean time, see Synopsis and unit tests for e
 WARNING: this module is still under development and the API is not yet finalized and may be 
 changed ahead of v1.000 release.
 
+=head2 API and Usage
+
+AuditAny uses a different API than typical DBIC components. Instead of loading at the schema/result class level with C<load_components>, AudityAny is used by attaching an "Auditor" to an existing schema I<object> instance:
+
+ my $schema = My::Schema->connect(@connect);
+ 
+ my $Auditor = DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_all_sources => 1,
+   collector_class => 'Collector::AutoDBIC',
+   collector_params => {
+     sqlite_db => 'db/audit.db',
+   }
+ );
+
+The rationale of this approach is that change tracking isn't necesarily something that needs to be, or should be, defined as a built-in attribute of the schema class. Additionally, because of the object-based approach, it is possible to attach multiple Auditors to a single schema object with multiple calls to DBIx::Class::AuditAny->track.
+
+
 =head1 DATAPOINTS
 
-...
+As changes occur in the tracked schema, information is collected in the form of I<datapoints> at various stages - or I<contexts> - before being passed to the configured Collector. A datapoint has a globally unique name and code used to calculate its value. Code is called at the stage defined by the I<context> of the datapoint. The available contexts are:
 
-Built-in datapoint config definitions currently stored in L<DBIx::Class::AuditAny::Util::BuiltinDatapoints> (likely to change)
+=over 4
+
+=item set
+
+=over 5
+
+=item base
+
+=back
+
+=item change
+
+=over 5
+
+=item source
+
+=back
+
+=item column
+
+
+=back
+
+B<set> (AKA changeset) datapoints are specific to an entire set of changes - insert/update/delete statements grouped in a transaction. Example changeset datapoints include C<changeset_ts> and other broad items. B<base> datapoints are logically the same as B<set> but only need to be calculated once (instead of with every change set). These include things like C<schema> and C<schema_ver>. 
+
+B<change> datapoints apply to a specific C<insert>, C<update> or C<delete> statement, and range from simple items such as C<action> (one of 'insert', 'update' or 'delete') to more exotic and complex items like <column_changes_json>. B<source> datapoints are logically the same as B<change>, but like B<base> datapoints, only need to be calculated once (per source). These include things like C<table_name> and C<source> (source name).
+
+Finally, B<column> datapoints cover information specific to an individual column, such as C<column_name>, C<old_value> and C<new_value>.
+
+There are a number of built-in datapoints (currently stored in L<DBIx::Class::AuditAny::Util::BuiltinDatapoints> which is likely to change), but custom datapoints can also be defined. The Auditor config defines a specific set of datapoints to be calculated (built-in and/or custom). If no datapoints are specified, the default list is used (currently C<change_ts, action, source, pri_key_value, column_name, old_value, new_value>).
+
+The list of datapoints is specified as an ArrayRef in the config. For example:
+
+ datapoints => [qw(action_id column_name new_value)],
+
+=head2 Custom Datapoints
+
+Custom datapoints are specified as HashRef configs with 3 parameters:
+
+=over 4
+
+=item name
+
+The unique name of the datapoint. Should be all lowercase letters, numbers and underscore and must be different from all other datapoints (across all contexts).
+
+=item context
+
+The context of the datapoint: base, source, set, change or column.
+
+=item method
+
+CodeRef to calculate and return the value. The CodeRef is called according to the context, and a different context object is supplied for each context. Each context has its own context object type except B<base> which is supplied the Auditor object itself. See Audit Context Objects below.
+
+=back
+
+
+Custom datapoints are defined in the C<datapoint_configs> param. After defining a new datapoint config it can then be used like any other datapoint. For example:
+
+ datapoints => [qw(action_id column_name new_value client_ip)],
+ datapoint_configs => [
+   {
+     name => 'client_ip',
+     context => 'set',
+     method => sub {
+       my $contextObj = shift;
+       my $c = some_func(...);
+       return $c->req->address; 
+     }
+   }
+ ]
+
+=head2 Datapoint Names
+
+Datapoint names must be unique, which means all the built-in datapoint names are reserved. However, if you really want to use an existing datapoint name, or if you want a built-in datapoint to use a different name, you can rename any datapoints like so:
+
+ rename_datapoints => {
+   new_value => 'new',
+   old_value => 'old',
+   column_name => 'column',
+ },
 
 =head1 COLLECTORS
+
+Once the Auditor calculates the configured datapoints it passes them to the configured I<Collector>.
 
 ...
 
@@ -846,6 +947,12 @@ Inspired in part by the Catalyst Context object design...
 =item Add more built-in datapoints
 
 =item Review code and get feedback from the perl community for best practices/suggestions
+
+=item Expand the Collector API to be able to provide datapoint configs
+
+=item Separate set/change/column datapoints into 'pre' and 'post' stages
+
+=item Add mechanism to enable/disable tracking (localizable global?)
 
 =back
 
