@@ -3,13 +3,14 @@ DBIx-Class-AuditAny
 
 Flexible change tracking framework for DBIx::Class
 
-See POD in main class DBIx::Class::AuditAny
+### Visit the **[Wiki](https://github.com/vanstyn/DBIx-Class-AuditAny/wiki)** for more information
+
+#### See also POD in main class DBIx::Class::AuditAny (also pasted as markdown below)
 
 -------------------
-
-
-Copied/Converted POD (in-progress)
------------------------------------
+  
+  
+  
 
 # NAME
 
