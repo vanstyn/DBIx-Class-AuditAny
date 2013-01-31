@@ -10,6 +10,7 @@ use Class::MOP::Class;
 use DateTime;
 use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
+use DBIx::Class::AuditAny::Role::Schema;
 
 has 'time_zone', is => 'ro', isa => 'Str', default => 'local';
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
@@ -234,10 +235,6 @@ sub _init_datapoints {
 }
 
 
-
-
-
-
 sub BUILD {
 	my $self = shift;
 	
@@ -258,78 +255,10 @@ sub BUILD {
 
 sub _init_apply_schema_class {
 	my $self = shift;
-	return if ($self->schema->can('auditors'));
-	my $class = ref($self->schema) or die "schema is not a reference";
+	die "schema is not a reference" unless (ref $self->schema);
 	
-	my $meta = Class::MOP::Class->initialize($class);
-	
-	# If this class has already be updated:
-	return if ($meta->has_attribute('auditors'));
-	
-	my $immutable = $meta->is_immutable;
-	
-	die "Won't add 'auditany' attribute to immutable Schema Class '$class' " .
-	 '(hint: did you forget to remove __PACKAGE__->meta->make_immutable ??)' .
-	 ' - to force/override, set "track_immutable" to true.'
-		if ($immutable && !$self->track_immutable);
-	
-	# Tempory turn mutable back on, saving any immutable_options, first:
-	my %immut_opts = ();
-	if($immutable) {
-		%immut_opts = $meta->immutable_options;
-		$meta->make_mutable;
-	}
-	
-	$meta->add_attribute( 
-		auditors => ( 
-			accessor => 'auditors',
-			reader => 'auditors',
-			writer => 'set_auditors',
-			default => undef
-		)
-	);
-	$meta->add_method( add_auditor => sub { push @{(shift)->auditors}, @_ } );
-	
-	$meta->add_around_method_modifier( 'txn_do' => sub {
-		my $orig = shift;
-		my $Schema = shift;
-		
-		# This method modifier is applied to the entire schema class. Call/return the
-		# unaltered original method unless the Row is tied to a schema instance that
-		# is being tracked by an AuditAny which is configured to track the current
-		# action function. Also, make sure this call is not already nested to prevent
-		# deep recursion
-		my $Auditors = $Schema->auditors || [];
-		return $Schema->$orig(@_) unless (scalar(@$Auditors) > 0);
-		
-		my @ChangeSets = ();
-		foreach my $AuditAny (@$Auditors) {
-			next if (
-				ref($self) ne ref($AuditAny) ||
-				$AuditAny->active_changeset
-			);
-			push @ChangeSets, $AuditAny->start_changeset;
-		};
-		
-		return $Schema->$orig(@_) unless (scalar(@ChangeSets) > 0);
-		
-		my $result;
-		my @args = @_;
-		try {
-			$result = $Schema->$orig(@args);
-			$_->finish for (@ChangeSets);
-		}
-		catch {
-			my $err = shift;
-			# Clean up:
-			try{$_->AuditObj->clear_changeset} for (@ChangeSets);
-			# Re-throw:
-			die $err;
-		};
-		return $result;
-	});
-		
-	$meta->make_immutable(%immut_opts) if ($immutable);
+	Moo::Role->apply_roles_to_object($self->schema,'DBIx::Class::AuditAny::Role::Schema')
+		unless try{$self->schema->does('DBIx::Class::AuditAny::Role::Schema')};
 }
 
 sub start_changeset {
@@ -371,13 +300,11 @@ sub _bind_schema {
 	my $self = shift;
 	$self->_init_apply_schema_class;
 	
-	$self->schema->set_auditors([]) unless ($self->schema->auditors);
-	
 	die "Supplied Schema instance already has a bound Auditor - to allow multple " .
 	 "Auditors, set 'allow_multiple_auditors' to true"
-		if(scalar(@{$self->schema->auditors}) > 0 and ! $self->allow_multiple_auditors);
+		if($self->schema->auditor_count > 0 and ! $self->allow_multiple_auditors);
 	
-	$_ == $self and return for(@{$self->schema->auditors});
+	$_ == $self and return for($self->schema->auditors);
 	
 	return $self->schema->add_auditor($self);
 }
@@ -500,7 +427,7 @@ sub _add_row_trackers_methods {
 			# is being tracked by an AuditAny which is configured to track the current
 			# action function. Also, make sure this call is not already nested to prevent
 			# deep recursion
-			my $Auditors = $Row->result_source->schema->auditors || [];
+			my $Auditors = try{$Row->result_source->schema->auditors} || [];
 			return $Row->$orig(@_) unless (scalar(@$Auditors) > 0);
 			
 			# Before action is called:
