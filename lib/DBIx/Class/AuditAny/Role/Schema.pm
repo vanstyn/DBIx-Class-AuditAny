@@ -4,6 +4,9 @@ use Moo::Role;
 # VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Schema objects
 
+# This Role is for interfaces only. See the Storage role for the actual
+# hooks/logic
+
 use strict;
 use warnings;
 use Try::Tiny;
@@ -23,10 +26,10 @@ after BUILD => sub {
 	my $self = shift;
 	# Just for good measure, not usally called because the role is applied
 	# after the fact (see AuditAny.pm)
-	$self->_bind_storage;
+	$self->_apply_storage_role;
 };
 
-sub _bind_storage {
+sub _apply_storage_role {
 	my $self = shift;
 	# Apply the role to the Storage object:
 	Moo::Role->apply_roles_to_object($self->storage,'DBIx::Class::AuditAny::Role::Storage')

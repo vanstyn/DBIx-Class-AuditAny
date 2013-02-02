@@ -259,8 +259,9 @@ sub _init_apply_schema_class {
 	
 	Moo::Role->apply_roles_to_object($self->schema,'DBIx::Class::AuditAny::Role::Schema')
 		unless try{$self->schema->does('DBIx::Class::AuditAny::Role::Schema')};
-		
-	$self->schema->_bind_storage;
+	
+	# Important!
+	$self->schema->_apply_storage_role;
 }
 
 sub start_changeset {
