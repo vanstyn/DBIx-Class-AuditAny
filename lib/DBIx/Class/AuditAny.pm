@@ -420,8 +420,8 @@ sub _add_row_trackers_methods {
 		return if $self->tracked_action_functions->{$func_name}++;
 		
 		#### IN PROGRESS REFACTORING:
-		#### 'insert' has been moved into new Storage Role:
-		next if ($action eq 'insert');
+		next if ($action eq 'insert'); # <-- 'insert' has been moved into new Storage Role:
+		next if ($action eq 'delete'); # <-- 'delete' has been moved into new Storage Role:
 		####
 		
 		

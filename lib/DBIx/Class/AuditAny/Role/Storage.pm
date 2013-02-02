@@ -133,6 +133,10 @@ around 'update' => sub {
 	return wantarray ? @ret : $ret;
 };
 
+
+
+# TODO: try/catch and rethrow!
+
 around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
@@ -142,10 +146,53 @@ around 'delete' => sub {
 	my $ident = $args[1];
 	#scream_color(BOLD.RED,$ident);
 	
+	my $source_name = $Source->source_name;
+	my $action = 'delete';
+	
 	## Pre-call code
+	
+	# -- get currents row before they are deleted 
+	#  (logic adapted from DBIx::Class::Storage::DBI::insert)
+	my @rows = ();
+	my @cols = $Source->columns;
+	my $cur = DBIx::Class::ResultSet->new($Source, {
+		where => $ident,
+		select => \@cols,
+	})->cursor;
+	while(my @data = $cur->next) {
+		my %returned_cols = ();
+		@returned_cols{@cols} = @data;
+		push @rows, \%returned_cols;
+	}
+	# --
+	
+	#scream_color(RED,\%returned_cols);
 	
 	my ($ret,@ret);
 	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
+	
+	foreach my $row (@rows) {
+		foreach my $AuditAny ($self->all_auditors) {
+			my $func_name = $source_name . '::' . $action;
+			next unless ($AuditAny->tracked_action_functions->{$func_name});
+			
+			unless ($AuditAny->active_changeset) {
+				$AuditAny->start_changeset;
+				$AuditAny->auto_finish(1);
+			}
+			
+			my $class = $AuditAny->change_context_class;
+			my $ChangeContext = $class->new(
+				AuditObj				=> $AuditAny,
+				SourceContext		=> $AuditAny->tracked_sources->{$source_name},
+				ChangeSetContext	=> $AuditAny->active_changeset,
+				action				=> $action,
+				old_columns			=> $row
+			);
+			$ChangeContext->record;
+			$AuditAny->record_change($ChangeContext);
+		}
+	}
 	
 	## Post-call code
 
