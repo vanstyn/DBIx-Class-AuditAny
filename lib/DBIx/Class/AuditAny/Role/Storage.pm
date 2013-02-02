@@ -69,6 +69,29 @@ around 'insert' => sub {
 	# $rv should always be a hashref of what (*was*) inserted.
 	# Capture it here.
 	
+	my $source_name = $Source->source_name;
+	my $action = 'insert';
+	
+	foreach my $AuditAny ($self->all_auditors) {
+		my $func_name = $source_name . '::' . $action;
+		next unless ($AuditAny->tracked_action_functions->{$func_name});
+		
+		unless ($AuditAny->active_changeset) {
+			$AuditAny->start_changeset;
+			$AuditAny->auto_finish(1);
+		}
+		
+		my $class = $AuditAny->change_context_class;
+		my $ChangeContext = $class->new(
+			AuditObj				=> $AuditAny,
+			SourceContext		=> $AuditAny->tracked_sources->{$source_name},
+			ChangeSetContext	=> $AuditAny->active_changeset,
+			action				=> $action
+		);
+		$ChangeContext->record($rv);
+		$AuditAny->record_change($ChangeContext);
+	}
+	
 	return $rv;
 };
 

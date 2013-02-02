@@ -414,9 +414,16 @@ sub _add_row_trackers_methods {
 	
 	foreach my $action (@{$self->track_actions}) {
 
-		my $func_name = $result_class . '::' . $action;
+		#my $func_name = $result_class . '::' . $action;
+		my $func_name = $source_name . '::' . $action;
 		
 		return if $self->tracked_action_functions->{$func_name}++;
+		
+		#### IN PROGRESS REFACTORING:
+		#### 'insert' has been moved into new Storage Role:
+		next if ($action eq 'insert');
+		####
+		
 		
 		my $applied_attr = '_auditany_' . $action . '_tracker_applied';
 		return if ($result_class->can($applied_attr));
@@ -559,7 +566,8 @@ sub _add_additional_row_methods {
 			AuditObj				=> $AuditObj,
 			SourceContext		=> $SourceContext,
 			ChangeSetContext	=> $AuditObj->active_changeset,
-			Row 					=> $Row,
+			#Row 					=> $Row,
+			old_columns			=> $self->_get_old_columns($Row),
 			action				=> 'select'
 		);
 		$ChangeContext->record;
