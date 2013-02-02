@@ -19,9 +19,10 @@ ok(
 
 mkdir('t/var') unless (-d 't/var');
 my $log = 't/var/log.txt';
+unlink $log if (-f $log);
 
 ok(
-	DBIx::Class::AuditAny->track(
+	my $Auditor = DBIx::Class::AuditAny->track(
 		schema => $schema, 
 		track_immutable => 1,
 		track_all_sources => 1,
@@ -39,6 +40,8 @@ ok(
 	),
 	"Setup simple tracker configured to write to text file"
 );
+
+
 
 ok( 
 	$schema->resultset('Contact')->create({

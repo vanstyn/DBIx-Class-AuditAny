@@ -12,6 +12,7 @@ use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 use DBIx::Class::AuditAny::Role::Schema;
 
+
 has 'time_zone', is => 'ro', isa => 'Str', default => 'local';
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
@@ -19,7 +20,6 @@ has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
 has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
 has 'track_actions', is => 'ro', isa => 'ArrayRef', default => sub { [qw(insert update delete)] };
 has 'allow_multiple_auditors', is => 'ro', isa => 'Bool', default => 0;
-
 
 has 'source_context_class', is => 'ro', default => 'AuditContext::Source';
 has 'change_context_class', is => 'ro', default => 'AuditContext::Change';
@@ -259,6 +259,8 @@ sub _init_apply_schema_class {
 	
 	Moo::Role->apply_roles_to_object($self->schema,'DBIx::Class::AuditAny::Role::Schema')
 		unless try{$self->schema->does('DBIx::Class::AuditAny::Role::Schema')};
+		
+	$self->schema->_bind_storage;
 }
 
 sub start_changeset {
