@@ -116,27 +116,6 @@ sub action_id {
 }
 
 
-#has 'datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	$self->enforce_executed;
-#	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('change') };
-#};
-#
-#has 'all_datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	return {
-#		%{ $self->SourceContext->all_datapoint_values },
-#		%{ $self->datapoint_values }
-#	};
-#};
-
-#sub get_named_datapoint_values {
-#	my $self = shift;
-#	my @names = (ref($_[0]) eq 'ARRAY') ? @{ $_[0] } : @_; # <-- arg as array or arrayref
-#	my $data = $self->all_datapoint_values;
-#	return map { $_ => (exists $data->{$_} ? $data->{$_} : undef) } @names;
-#}
-
 sub enforce_unexecuted {
 	my $self = shift;
 	die "Error: Audit action already executed!" if ($self->executed);
@@ -164,25 +143,6 @@ around 'Row' => sub {
 	return $self->recorded ? $self->newRow : $self->$orig(@_);
 };
 
-#sub proxy_action {
-#	my $self = shift;
-#	my $action = shift;
-#	my $columns = shift;
-#	
-#	die "Bad action '$action'" unless ($action ~~ @{$self->allowed_actions});
-#	
-#	$self->enforce_unexecuted;
-#	$self->origRow;
-#	$self->action($action);
-#	$self->executed(1);
-#	
-#	$self->Row->set_inflated_columns($columns) if $columns;
-#	
-#	$self->dirty_columns({ $self->Row->get_dirty_columns });
-#	
-#	$self->change_ts( DateTime->now( time_zone => 'local' ) );
-#	return $self->Row->$action;
-#}
 
 has 'old_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
 	my $self = shift;
@@ -241,11 +201,6 @@ has 'column_datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default 
 	my @Contexts = values %{$self->column_changes};
 	return { map { $_->column_name => $_->local_datapoint_data } @Contexts };
 };
-
-#sub dump_change {
-#	my $self = shift;
-#	return Dumper($self->column_datapoint_values);
-#}
 
 
 has 'column_changes_ascii', is => 'ro', isa => 'Str', lazy => 1, default => sub {

@@ -10,6 +10,7 @@ use Moo::Role;
 use strict;
 use warnings;
 use Try::Tiny;
+use DBIx::Class::AuditAny::Util;
 
 use DBIx::Class::AuditAny::Role::Storage;
 

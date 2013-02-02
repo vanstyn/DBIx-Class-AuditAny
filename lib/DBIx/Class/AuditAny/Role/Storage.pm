@@ -7,6 +7,8 @@ use Moo::Role;
 use strict;
 use warnings;
 use Try::Tiny;
+use DBIx::Class::AuditAny::Util;
+use Term::ANSIColor qw(:constants);
 
 requires 'txn_do';
 requires 'insert';
@@ -48,23 +50,33 @@ around 'txn_do' => sub {
 };
 
 
+# insert is the most simple. Always applies to exactly 1 row:
 around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
+	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert()');
+	
 	## Pre-call code
 	
-	my ($ret,@ret);
-	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
+	# If we want to capture the data *being* inserted, do it here:
+	my $to_insert = $args[1];
 	
-	## Post-call code
-
-	return wantarray ? @ret : $ret;
+	## -- Call original --
+	my $rv = $self->$orig(@args);
+	## -------------------
+	
+	# $rv should always be a hashref of what (*was*) inserted.
+	# Capture it here.
+	
+	return $rv;
 };
 
 around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
+	
+	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert_bulk()');
 	
 	## Pre-call code
 	
@@ -81,6 +93,13 @@ around 'update' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
+	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->update()');
+	
+	# Is this right? from reading the code, it seems that this should be $args[1],
+	# but it sure does look like it is in $args[2]...
+	my $ident = $args[2];
+	scream_color(BOLD.GREEN,$ident);
+	
 	## Pre-call code
 	
 	my ($ret,@ret);
@@ -94,6 +113,11 @@ around 'update' => sub {
 around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
+	
+	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->delete()');
+	
+	my $ident = $args[1];
+	scream_color(BOLD.RED,$ident);
 	
 	## Pre-call code
 	
