@@ -171,6 +171,9 @@ around 'delete' => sub {
 	my ($ret,@ret);
 	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
 	
+	# --- TODO: Auditors should be the outer loop, but the 'auto_finish' logic
+	# needs to be updated to properly handle the case of no transaction, but
+	# multiple rows being deleted at once (i.e. via $Rs->delete).
 	foreach my $row (@rows) {
 		foreach my $AuditAny ($self->all_auditors) {
 			my $func_name = $source_name . '::' . $action;
@@ -193,6 +196,7 @@ around 'delete' => sub {
 			$AuditAny->record_change($ChangeContext);
 		}
 	}
+	# ---
 	
 	## Post-call code
 
