@@ -453,7 +453,8 @@ sub _add_row_trackers_methods {
 					AuditObj				=> $AuditAny,
 					SourceContext		=> $AuditAny->tracked_sources->{$source_name},
 					ChangeSetContext	=> $AuditAny->active_changeset,
-					Row 					=> $Row,
+					#Row 					=> $Row,
+					old_columns			=> $self->_get_old_columns($Row),
 					action				=> $action
 				) or next;
 				push @Trackers, $ChangeContext;
@@ -467,7 +468,7 @@ sub _add_row_trackers_methods {
 				
 				# After action is called:
 				foreach my $ChangeContext (@Trackers) {
-					$ChangeContext->record;
+					$ChangeContext->record($self->_get_new_columns($Row));
 					my $AuditAny = $ChangeContext->AuditObj;
 					$AuditAny->record_change($ChangeContext);
 					$AuditAny->calling_action_function->{$func_name} = 0;
@@ -499,6 +500,33 @@ sub _add_row_trackers_methods {
 	# Restore immutability to the way to was:
 	$meta->make_immutable(%immut_opts) if ($immutable);
 }
+
+# -- TEMP: bridges for converting away from Row objects
+sub _get_old_columns {
+	my $self = shift;
+	my $Row = $self->_to_origRow(shift);
+	return {} unless ($Row && $Row->in_storage);
+	return { $Row->get_columns };
+}
+sub _get_new_columns {
+	my $self = shift;
+	my $Row = $self->_to_newRow(shift);
+	return {} unless ($Row && $Row->in_storage);
+	return { $Row->get_columns };
+}
+sub _to_origRow {
+	my $self = shift;
+	my $Row = shift;
+	return $Row->in_storage ? $Row->get_from_storage : $Row;
+}
+sub _to_newRow {
+	my $self = shift;
+	my $Row = shift;
+	return $Row unless ($Row->in_storage);
+	return $Row->get_from_storage;
+}
+# --
+
 
 
 sub _add_additional_row_methods {

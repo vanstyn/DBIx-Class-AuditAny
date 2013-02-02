@@ -24,7 +24,7 @@ sub scream {
 }
 
 sub scream_color {
-	return unless ($ENV{DEBUG}); ##<---- new: disabled without 'DEBUG'
+	#return unless ($ENV{DEBUG}); ##<---- new: disabled without 'DEBUG'
 	my $color = shift;
 	local $_ = caller_data(3) unless (
 		$_ eq 'no_caller_data' or (

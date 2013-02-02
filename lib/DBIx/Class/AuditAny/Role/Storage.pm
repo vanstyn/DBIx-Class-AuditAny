@@ -55,7 +55,7 @@ around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
-	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert()');
+	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert()');
 	
 	## Pre-call code
 	
@@ -76,7 +76,7 @@ around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
-	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert_bulk()');
+	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert_bulk()');
 	
 	## Pre-call code
 	
@@ -93,12 +93,12 @@ around 'update' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
-	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->update()');
+	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->update()');
 	
 	# Is this right? from reading the code, it seems that this should be $args[1],
 	# but it sure does look like it is in $args[2]...
 	my $ident = $args[2];
-	scream_color(BOLD.GREEN,$ident);
+	#scream_color(BOLD.GREEN,$ident);
 	
 	## Pre-call code
 	
@@ -114,10 +114,10 @@ around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
 	
-	scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->delete()');
+	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->delete()');
 	
 	my $ident = $args[1];
-	scream_color(BOLD.RED,$ident);
+	#scream_color(BOLD.RED,$ident);
 	
 	## Pre-call code
 	

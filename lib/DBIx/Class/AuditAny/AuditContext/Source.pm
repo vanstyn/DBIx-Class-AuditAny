@@ -37,22 +37,20 @@ sub get_pri_key_value {
 	my $Row = shift;
 	my @num = $self->pri_key_count;
 	return undef unless (scalar(@num) > 0);
-	return $Row->get_column($self->pri_key_column) if (scalar(@num) == 1);
+	return $self->_ambig_get_column($Row,$self->pri_key_column) if (scalar(@num) == 1);
 	my $sep = $self->primary_key_separator;
-	return join($sep, map { $Row->get_column($_) } $self->primary_columns );
+	return join($sep, map { $self->_ambig_get_column($Row,$_) } $self->primary_columns );
 }
 
-#has 'datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('source') };
-#};
-#
-#has 'all_datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	return {
-#		%{ $self->AuditObj->base_datapoint_values },
-#		%{ $self->datapoint_values }
-#	};
-#};
+# added as a bridge to be able to "get_column" with either a Row object
+# or a simple HashRef via the same syntax (in get_pri_key_value above):
+sub _ambig_get_column {
+	my $self = shift;
+	my $row = shift;
+	my $column = shift;
+	return ref($row) eq 'HASH' ? $row->{$column} : $row->get_column($column);
+}
+
+
 
 1;

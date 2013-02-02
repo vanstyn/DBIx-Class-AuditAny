@@ -10,7 +10,6 @@ use DBIx::Class::AuditAny::Util;
 
 has 'SourceContext', is => 'ro', required => 1;
 has 'ChangeSetContext', isa => 'Maybe[Object]', is => 'ro', default => undef;
-has 'Row', is => 'ro', required => 1;
 has 'action', is => 'ro', isa => 'Str', required => 1;
 
 # whether or not to fetch the row from storage again after the action
@@ -44,16 +43,28 @@ sub _build_local_datapoint_data {
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('change') };
 }
 
+
+
 has 'pri_key_value', is => 'ro', isa => 'Maybe[Str]', lazy => 1, default => sub { 
 	my $self = shift;
 	$self->enforce_executed;
-	my $Row = $self->Row || $self->origRow;
-	return $self->get_pri_key_value($Row);
+	
+	# TEMP: this is a bridge for converting away from needing Row objects...
+	my $merge_cols = { %{$self->old_columns}, %{$self->new_columns} };
+	return $self->get_pri_key_value($merge_cols);
+	
+	#my $Row = $self->Row || $self->origRow;
+	#return $self->get_pri_key_value($Row);
 };
 
 has 'orig_pri_key_value', is => 'ro', isa => 'Maybe[Str]', lazy => 1, default => sub { 
 	my $self = shift;
-	return $self->get_pri_key_value($self->origRow);
+	
+	# TEMP: this is a bridge for converting away from needing Row objects...
+	my $merge_cols = { %{$self->new_columns},%{$self->old_columns} };
+	return $self->get_pri_key_value($merge_cols);
+	
+	#return $self->get_pri_key_value($self->origRow);
 };
 
 has 'change_ts', is => 'ro', isa => 'DateTime', lazy => 1, default => sub {
@@ -65,40 +76,78 @@ has 'change_ts', is => 'ro', isa => 'DateTime', lazy => 1, default => sub {
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
 has 'change_elapsed', is => 'rw', default => undef;
 
-has 'dirty_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
+has 'old_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {{}};
+has 'new_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {{}};
+
+
+
+#has 'Row', is => 'ro', required => 1;
+#
+#around 'Row' => sub {
+#	my $orig = shift;
+#	my $self = shift;
+#	return $self->recorded ? $self->newRow : $self->$orig(@_);
+#};
+#
+#
+#has 'origRow', is => 'ro', lazy => 1, default => sub {
+#	my $self = shift;
+#	$self->enforce_unexecuted;
+#	return $self->Row->in_storage ? $self->Row->get_from_storage : $self->Row;
+#};
+#
+#has 'newRow', is => 'ro', lazy => 1, default => sub {
+#	my $self = shift;
+#	$self->enforce_executed;
+#	
+#	return $self->Row unless (
+#		$self->Row->in_storage and
+#		$self->new_columns_from_storage and
+#		$self->action ne 'select'
+#	);
+#	return $self->Row->get_from_storage;
+#};
+#
+#has 'old_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
+#	my $self = shift;
+#	return {} unless ($self->action ne 'select' && $self->origRow && $self->origRow->in_storage);
+#	return { $self->origRow->get_columns };
+#};
+#
+#has 'new_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
+#	my $self = shift;
+#	return {} unless ($self->newRow && $self->newRow->in_storage);
+#	return { $self->newRow->get_columns };
+#};
+#
+#sub BUILD {
+#	my $self = shift;
+#	$self->origRow;
+#	$self->old_columns;
+#}
+
+
+
+sub record {
 	my $self = shift;
+	my $new_columns = shift;
 	$self->enforce_unexecuted;
-	return { $self->Row->get_dirty_columns };
-};
-
-
-has 'origRow', is => 'ro', lazy => 1, default => sub {
-	my $self = shift;
-	$self->enforce_unexecuted;
-	return $self->Row->in_storage ? $self->Row->get_from_storage : $self->Row;
-};
-
-has 'newRow', is => 'ro', lazy => 1, default => sub {
-	my $self = shift;
-	$self->enforce_executed;
+	$self->change_ts;
+	$self->change_elapsed(tv_interval($self->start_timeofday));
+	$self->executed(1);
 	
-	return $self->Row unless (
-		$self->Row->in_storage and
-		$self->new_columns_from_storage and
-		$self->action ne 'select'
+	%{$self->new_columns} = %$new_columns if (
+		ref($new_columns) eq 'HASH' and
+		scalar(keys %$new_columns) > 0
 	);
-	return $self->Row->get_from_storage;
-};
-
-
-
-
-sub BUILD {
-	my $self = shift;
-	$self->dirty_columns;
-	$self->origRow;
-	$self->old_columns;
+	
+	#$self->newRow;
+	
+	$self->recorded(1);
 }
+
+
+
 
 
 has 'action_id_map', is => 'ro', isa => 'HashRef[Str]', lazy_build => 1;
@@ -125,36 +174,6 @@ sub enforce_executed {
 	my $self = shift;
 	die "Error: Audit action not executed yet!" unless ($self->executed);
 }
-
-
-sub record {
-	my $self = shift;
-	$self->enforce_unexecuted;
-	$self->change_ts;
-	$self->change_elapsed(tv_interval($self->start_timeofday));
-	$self->executed(1);
-	$self->newRow;
-	$self->recorded(1);
-}
-
-around 'Row' => sub {
-	my $orig = shift;
-	my $self = shift;
-	return $self->recorded ? $self->newRow : $self->$orig(@_);
-};
-
-
-has 'old_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-	my $self = shift;
-	return {} unless ($self->action ne 'select' && $self->origRow && $self->origRow->in_storage);
-	return { $self->origRow->get_columns };
-};
-
-has 'new_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-	my $self = shift;
-	return {} unless ($self->newRow && $self->newRow->in_storage);
-	return { $self->newRow->get_columns };
-};
 
 
 has 'column_changes', is => 'ro', isa => 'HashRef[Object]', lazy => 1, default => sub {
