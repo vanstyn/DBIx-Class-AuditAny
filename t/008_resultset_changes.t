@@ -8,7 +8,7 @@ use Test::More;
 use DBICx::TestDatabase 0.04;
 use lib qw(t/lib);
 
-plan tests => 12;
+#plan tests => 12;
 
 use_ok( 'DBIx::Class::AuditAny' );
 
@@ -64,6 +64,15 @@ is(
 );
 
 
+
+ok(
+	$SmithRs->update({ last => 'Smyth' }),
+	"Update the Smith rows at once"
+);
+
+# Get the newly changed Rs (was sort of surprised this didn't happen automatically)
+$SmithRs = $schema->resultset('Contact')->search_rs({ last => 'Smyth' });
+
 ok(
 	$SmithRs->delete,
 	"Delete the Smith rows at once"
@@ -78,7 +87,7 @@ ok(
 
 
 is(
-	$audit_schema->resultset('AuditChangeSet')->count => 4,
+	$audit_schema->resultset('AuditChangeSet')->count => 5,
 	"Expected number of ChangeSets"
 );
 
@@ -96,10 +105,22 @@ is(
 );
 
 
-
 is(
 	$audit_schema->resultset('AuditChangeColumn')->search_rs({
 		old_value => 'Smith',
+		new_value => 'Smyth',
+		column_name => 'last',
+		'change.action' => 'update'
+	},{
+		join => { change => 'changeset' }
+	})->count => 2,
+	"Expected specific UPDATE column change record exists"
+);
+
+
+is(
+	$audit_schema->resultset('AuditChangeColumn')->search_rs({
+		old_value => 'Smyth',
 		new_value => undef,
 		column_name => 'last',
 		'change.action' => 'delete'
@@ -108,3 +129,6 @@ is(
 	})->count => 2,
 	"Expected specific DELETE column change record exists"
 );
+
+
+done_testing;

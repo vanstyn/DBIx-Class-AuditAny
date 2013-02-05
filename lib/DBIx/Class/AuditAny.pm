@@ -422,7 +422,10 @@ sub _add_row_trackers_methods {
 		#### IN PROGRESS REFACTORING:
 		next if ($action eq 'insert'); # <-- 'insert' has been moved into new Storage Role:
 		next if ($action eq 'delete'); # <-- 'delete' has been moved into new Storage Role:
+		next if ($action eq 'update'); # <-- 'update' has been moved into new Storage Role:
 		####
+		
+		### The rest of this code should now be inactive:
 		
 		
 		my $applied_attr = '_auditany_' . $action . '_tracker_applied';
