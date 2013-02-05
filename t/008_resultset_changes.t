@@ -78,8 +78,7 @@ ok(
 
 
 is(
-	# TODO: this should be 4 once Rs feature is finished:
-	$audit_schema->resultset('AuditChangeSet')->count => 5,
+	$audit_schema->resultset('AuditChangeSet')->count => 4,
 	"Expected number of ChangeSets"
 );
 

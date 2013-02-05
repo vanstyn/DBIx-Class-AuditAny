@@ -171,18 +171,18 @@ around 'delete' => sub {
 	my ($ret,@ret);
 	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
 	
-	# --- TODO: Auditors should be the outer loop, but the 'auto_finish' logic
-	# needs to be updated to properly handle the case of no transaction, but
-	# multiple rows being deleted at once (i.e. via $Rs->delete).
-	foreach my $row (@rows) {
-		foreach my $AuditAny ($self->all_auditors) {
+	foreach my $AuditAny ($self->all_auditors) {
+		
+		my $local_changeset = 0;
+		unless ($AuditAny->active_changeset) {
+			$AuditAny->start_changeset;
+			$local_changeset = 1;
+		}
+	
+		foreach my $row (@rows) {
+		
 			my $func_name = $source_name . '::' . $action;
 			next unless ($AuditAny->tracked_action_functions->{$func_name});
-			
-			unless ($AuditAny->active_changeset) {
-				$AuditAny->start_changeset;
-				$AuditAny->auto_finish(1);
-			}
 			
 			my $class = $AuditAny->change_context_class;
 			my $ChangeContext = $class->new(
@@ -195,6 +195,8 @@ around 'delete' => sub {
 			$ChangeContext->record;
 			$AuditAny->record_change($ChangeContext);
 		}
+		
+		$AuditAny->finish_changeset if ($local_changeset);
 	}
 	# ---
 	
