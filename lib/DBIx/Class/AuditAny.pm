@@ -397,118 +397,13 @@ sub _add_row_trackers_methods {
 	
 	my $source_name = $AuditSourceContext->source;
 	my $result_class = $self->schema->class($source_name);
-	my $meta = Class::MOP::Class->initialize($result_class);
-	my $immutable = $meta->is_immutable;
-	
-	die "Won't add tracker/modifier method to immutable Result Class '$result_class' " .
-	 '(hint: did you forget to remove __PACKAGE__->meta->make_immutable ??)' .
-	 ' - to force/override, set "track_immutable" to true.'
-		if ($immutable && !$self->track_immutable);
-	
-	# Tempory turn mutable back on, saving any immutable_options, first:
-	my %immut_opts = ();
-	if($immutable) {
-		%immut_opts = $meta->immutable_options;
-		$meta->make_mutable;
-	}
 	
 	foreach my $action (@{$self->track_actions}) {
-
-		#my $func_name = $result_class . '::' . $action;
 		my $func_name = $source_name . '::' . $action;
-		
 		return if $self->tracked_action_functions->{$func_name}++;
-		
-		#### IN PROGRESS REFACTORING:
-		next if ($action eq 'insert'); # <-- 'insert' has been moved into new Storage Role:
-		next if ($action eq 'delete'); # <-- 'delete' has been moved into new Storage Role:
-		next if ($action eq 'update'); # <-- 'update' has been moved into new Storage Role:
-		####
-		
-		### The rest of this code should now be inactive:
-		
-		
-		my $applied_attr = '_auditany_' . $action . '_tracker_applied';
-		return if ($result_class->can($applied_attr));
-
-		$meta->add_around_method_modifier( $action => sub {
-			my $orig = shift;
-			my $Row = shift;
-		
-			# This method modifier is applied to the entire result class. Call/return the
-			# unaltered original method unless the Row is tied to a schema instance that
-			# is being tracked by an AuditAny which is configured to track the current
-			# action function. Also, make sure this call is not already nested to prevent
-			# deep recursion
-			my $Auditors = try{$Row->result_source->schema->auditors} || [];
-			return $Row->$orig(@_) unless (scalar(@$Auditors) > 0);
-			
-			# Before action is called:
-			my @Trackers = ();
-			foreach my $AuditAny (@$Auditors) {
-				next if (
-					ref($self) ne ref($AuditAny) ||
-					! $AuditAny->tracked_action_functions->{$func_name} ||
-					$AuditAny->calling_action_function->{$func_name}
-				);
-				
-				unless ($AuditAny->active_changeset) {
-					$AuditAny->start_changeset;
-					$AuditAny->auto_finish(1);
-				}
-				
-				$AuditAny->calling_action_function->{$func_name} = 1;
-				my $class = $AuditAny->change_context_class;
-				my $ChangeContext = $class->new(
-					AuditObj				=> $AuditAny,
-					SourceContext		=> $AuditAny->tracked_sources->{$source_name},
-					ChangeSetContext	=> $AuditAny->active_changeset,
-					#Row 					=> $Row,
-					old_columns			=> $self->_get_old_columns($Row),
-					action				=> $action
-				) or next;
-				push @Trackers, $ChangeContext;
-			}
-			
-			my $result;
-			my @args = @_;
-			try {
-				# call action:
-				$result = $Row->$orig(@args);
-				
-				# After action is called:
-				foreach my $ChangeContext (@Trackers) {
-					$ChangeContext->record($self->_get_new_columns($Row));
-					my $AuditAny = $ChangeContext->AuditObj;
-					$AuditAny->record_change($ChangeContext);
-					$AuditAny->calling_action_function->{$func_name} = 0;
-				}
-			}
-			catch {
-				my $err = shift;
-				# Still Clean up:
-				foreach my $ChangeContext (@Trackers) {
-					try {
-						my $AuditAny = $ChangeContext->AuditObj;
-						try{$AuditAny->clear_changeset};
-						$AuditAny->calling_action_function->{$func_name} = 0;
-					};
-				}
-				# Re-throw:
-				die $err;
-			};
-			return $result;
-		}) or die "Unknown error setting up '$action' modifier on '$result_class'";
-		
-		$result_class->mk_classdata($applied_attr);
-		$result_class->$applied_attr(1);
-		
 	}
 	
-	$self->_add_additional_row_methods($meta);
-	
-	# Restore immutability to the way to was:
-	$meta->make_immutable(%immut_opts) if ($immutable);
+	$self->_add_additional_row_methods($result_class);
 }
 
 # -- TEMP: bridges for converting away from Row objects
@@ -538,10 +433,27 @@ sub _to_newRow {
 # --
 
 
-
+# TODO/FIXME: This needs to be refactored to use a cleaner API. Probably 
+# totally different (this code is leftover from before the switch to the
+# Storage Role API)
 sub _add_additional_row_methods {
 	my $self = shift;
-	my $meta = shift;
+	my $result_class = shift;
+	
+	my $meta = Class::MOP::Class->initialize($result_class);
+	my $immutable = $meta->is_immutable;
+	
+	die "Won't add tracker/modifier method to immutable Result Class '$result_class' " .
+	 '(hint: did you forget to remove __PACKAGE__->meta->make_immutable ??)' .
+	 ' - to force/override, set "track_immutable" to true.'
+		if ($immutable && !$self->track_immutable);
+	
+	# Tempory turn mutable back on, saving any immutable_options, first:
+	my %immut_opts = ();
+	if($immutable) {
+		%immut_opts = $meta->immutable_options;
+		$meta->make_mutable;
+	}
 	
 	return if ($meta->has_method('audit_take_snapshot'));
 	
@@ -592,6 +504,9 @@ sub _add_additional_row_methods {
 		return $Row->audit_take_snapshot($AuditObj) unless ($Collector->has_full_row_stored($Row));
 		return $Row;
 	});
+	
+	# Restore immutability to the way to was:
+	$meta->make_immutable(%immut_opts) if ($immutable);
 }
 
 

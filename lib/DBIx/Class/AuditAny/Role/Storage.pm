@@ -4,6 +4,12 @@ use Moo::Role;
 # VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Storage objects
 
+## TODO:
+##  1. track rekey in update
+##  2. track changes in FK with cascade
+
+
+
 use strict;
 use warnings;
 use Try::Tiny;
@@ -196,8 +202,6 @@ around 'update' => sub {
 
 
 
-# TODO: try/catch and rethrow!
-
 around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
 	my $Source = $args[0];
@@ -275,16 +279,6 @@ sub _get_raw_rows {
 
 	return \@rows;
 }
-
-
-
-
-## Need to:
-##  1. normalize $ident to be able to get individual rows across all actions
-##  2. track rekey in update
-##  3. track changes in FK with cascade
-##  4. honor wantarray
-
 
 
 sub changeset_do {
