@@ -1,11 +1,20 @@
 package DBIx::Class::AuditAny;
 use strict;
 use warnings;
-use Moose;
+use Moo;
 
 # VERSION
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
+#use MooseX::Types::Moose 
+use MooX::Types::MooseLike
+	qw(HashRef ArrayRef Str Bool Maybe Object);
+	
+use aliased 'DBIx::Class::Schema' => 'DBIC_Schema';
+#use MooseX::Types -declare => [ qw(DBIC_Schema) ];
+
+
+use Class::MOP;
 use Class::MOP::Class;
 use DateTime;
 use DBIx::Class::AuditAny::Util;
@@ -13,20 +22,20 @@ use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 use DBIx::Class::AuditAny::Role::Schema;
 
 
-has 'time_zone', is => 'ro', isa => 'Str', default => 'local';
+has 'time_zone', is => 'ro', isa => Str, default => sub{'local'};
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
-has 'schema', is => 'ro', required => 1, isa => 'DBIx::Class::Schema';
-has 'track_immutable', is => 'ro', isa => 'Bool', default => 0;
-has 'track_actions', is => 'ro', isa => 'ArrayRef', default => sub { [qw(insert update delete)] };
-has 'allow_multiple_auditors', is => 'ro', isa => 'Bool', default => 0;
+has 'schema', is => 'ro', required => 1, isa => DBIC_Schema;
+has 'track_immutable', is => 'ro', isa => Bool, default => sub{0};
+has 'track_actions', is => 'ro', isa => ArrayRef, default => sub { [qw(insert update delete)] };
+has 'allow_multiple_auditors', is => 'ro', isa => Bool, default => sub{0};
 
-has 'source_context_class', is => 'ro', default => 'AuditContext::Source';
-has 'change_context_class', is => 'ro', default => 'AuditContext::Change';
-has 'changeset_context_class', is => 'ro', default => 'AuditContext::ChangeSet';
-has 'column_context_class', is => 'ro', default => 'AuditContext::Column';
-has 'default_datapoint_class', is => 'ro', default => 'DataPoint';
-has 'collector_class', is => 'ro', isa => 'Str';
+has 'source_context_class', is => 'ro', default => sub{'AuditContext::Source'};
+has 'change_context_class', is => 'ro', default => sub{'AuditContext::Change'};
+has 'changeset_context_class', is => 'ro', default => sub{'AuditContext::ChangeSet'};
+has 'column_context_class', is => 'ro', default => sub{'AuditContext::Column'};
+has 'default_datapoint_class', is => 'ro', default => sub{'DataPoint'};
+has 'collector_class', is => 'ro', isa => Str;
 
 around $_ => sub { 
 	my $orig = shift; my $self = shift; 
@@ -37,14 +46,14 @@ around $_ => sub {
  default_datapoint_class collector_class
 );
 
-has 'collector_params', is => 'ro', isa => 'HashRef', default => sub {{}};
-has 'primary_key_separator', is => 'ro', isa => 'Str', default => '|~|';
-has 'datapoints', is => 'ro', isa => 'ArrayRef[Str]', lazy_build => 1;
-has 'datapoint_configs', is => 'ro', isa => 'ArrayRef[HashRef]', default => sub {[]};
-has 'auto_include_user_defined_datapoints', is => 'ro', isa => 'Bool', default => 1;
-has 'rename_datapoints', is => 'ro', isa => 'Maybe[HashRef[Str]]', default => undef;
-has 'disable_datapoints', is => 'ro', isa => 'ArrayRef', default => sub {[]};
-has 'record_empty_changes', is => 'ro', isa => 'Bool', default => 0;
+has 'collector_params', is => 'ro', isa => HashRef, default => sub {{}};
+has 'primary_key_separator', is => 'ro', isa => Str, default => sub{'|~|'};
+has 'datapoints', is => 'ro', isa => ArrayRef[Str], lazy_build => 1;
+has 'datapoint_configs', is => 'ro', isa => ArrayRef[HashRef], default => sub {[]};
+has 'auto_include_user_defined_datapoints', is => 'ro', isa => Bool, default => sub{1};
+has 'rename_datapoints', is => 'ro', isa => Maybe[HashRef[Str]], default => sub{undef};
+has 'disable_datapoints', is => 'ro', isa => ArrayRef, default => sub {[]};
+has 'record_empty_changes', is => 'ro', isa => Bool, default => sub{0};
 
 has 'collector', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
@@ -56,19 +65,19 @@ has 'collector', is => 'ro', lazy => 1, default => sub {
 
 # Any sources within the tracked schema that the collector is writing to; these
 # sources are not allowed to be tracked because it would create infinite recursion:
-has 'log_sources', is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, init_arg => undef, default => sub {
+has 'log_sources', is => 'ro', isa => ArrayRef[Str], lazy => 1, init_arg => undef, default => sub {
 	my $self = shift;
 	return $self->collector->writes_bound_schema_sources;
 };
 
-has 'tracked_action_functions', is => 'ro', isa => 'HashRef', default => sub {{}};
-has 'tracked_sources', is => 'ro', isa => 'HashRef[Str]', default => sub {{}};
-has 'calling_action_function', is => 'ro', isa => 'HashRef[Bool]', default => sub {{}};
-has 'active_changeset', is => 'rw', isa => 'Maybe[Object]', default => undef;
-has 'auto_finish', is => 'rw', isa => 'Bool', default => 0;
+has 'tracked_action_functions', is => 'ro', isa => HashRef, default => sub {{}};
+has 'tracked_sources', is => 'ro', isa => HashRef[Str], default => sub {{}};
+has 'calling_action_function', is => 'ro', isa => HashRef[Bool], default => sub {{}};
+has 'active_changeset', is => 'rw', isa => Maybe[Object], default => sub{undef};
+has 'auto_finish', is => 'rw', isa => Bool, default => sub{0};
 
-has 'track_init_args', is => 'ro', isa => 'Maybe[HashRef]', default => undef;
-has 'build_init_args', is => 'ro', isa => 'HashRef', required => 1;
+has 'track_init_args', is => 'ro', isa => Maybe[HashRef], default => sub{undef};
+has 'build_init_args', is => 'ro', isa => HashRef, required => 1;
 
 around BUILDARGS => sub {
 	my $orig = shift;
@@ -152,12 +161,12 @@ new_value
 )]};
 
 
-has '_datapoints', is => 'ro', isa => 'HashRef', default => sub {{}};
-has '_datapoints_context', is => 'ro', isa => 'HashRef', default => sub {{}};
+has '_datapoints', is => 'ro', isa => HashRef, default => sub {{}};
+has '_datapoints_context', is => 'ro', isa => HashRef, default => sub {{}};
 
 # Also index datapoints by 'original_name' which will be different from 'name'
 # whenever 'rename_datapoints' has been applied
-has '_datapoints_orig_names', is => 'ro', isa => 'HashRef', default => sub {{}};
+has '_datapoints_orig_names', is => 'ro', isa => HashRef, default => sub {{}};
 sub get_datapoint_orig { (shift)->_datapoints_orig_names->{(shift)} }
 
 sub add_datapoints {
@@ -189,7 +198,7 @@ sub get_context_datapoint_names {
 
 
 sub local_datapoint_data { (shift)->base_datapoint_values }
-has 'base_datapoint_values', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
+has 'base_datapoint_values', is => 'ro', isa => HashRef, lazy => 1, default => sub {
 	my $self = shift;
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('base') };
 };
