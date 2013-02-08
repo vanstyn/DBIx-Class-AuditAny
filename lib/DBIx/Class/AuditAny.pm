@@ -6,9 +6,9 @@ use Moo;
 # VERSION
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
-#use MooseX::Types::Moose 
-use MooX::Types::MooseLike
-	qw(HashRef ArrayRef Str Bool Maybe Object);
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);
+use MooX::Types::MooseLike::Base qw(:all);
+#use MooX::Types::MooseLike::Base qw(HashRef ArrayRef Str Bool Maybe Object);
 	
 use aliased 'DBIx::Class::Schema' => 'DBIC_Schema';
 #use MooseX::Types -declare => [ qw(DBIC_Schema) ];
@@ -25,7 +25,7 @@ use DBIx::Class::AuditAny::Role::Schema;
 has 'time_zone', is => 'ro', isa => Str, default => sub{'local'};
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
-has 'schema', is => 'ro', required => 1, isa => DBIC_Schema;
+has 'schema', is => 'ro', required => 1, isa => Object; #<--- FIX ME BACK TO DBIx::Class::Schema !!!
 has 'track_immutable', is => 'ro', isa => Bool, default => sub{0};
 has 'track_actions', is => 'ro', isa => ArrayRef, default => sub { [qw(insert update delete)] };
 has 'allow_multiple_auditors', is => 'ro', isa => Bool, default => sub{0};
@@ -48,12 +48,24 @@ around $_ => sub {
 
 has 'collector_params', is => 'ro', isa => HashRef, default => sub {{}};
 has 'primary_key_separator', is => 'ro', isa => Str, default => sub{'|~|'};
-has 'datapoints', is => 'ro', isa => ArrayRef[Str], lazy_build => 1;
 has 'datapoint_configs', is => 'ro', isa => ArrayRef[HashRef], default => sub {[]};
 has 'auto_include_user_defined_datapoints', is => 'ro', isa => Bool, default => sub{1};
 has 'rename_datapoints', is => 'ro', isa => Maybe[HashRef[Str]], default => sub{undef};
 has 'disable_datapoints', is => 'ro', isa => ArrayRef, default => sub {[]};
 has 'record_empty_changes', is => 'ro', isa => Bool, default => sub{0};
+
+has 'datapoints', is => 'ro', isa => ArrayRef[Str], 
+ default => sub{[qw(
+  change_ts
+  action
+  source
+  pri_key_value
+  column_name
+  old_value
+  new_value
+)]};
+
+
 
 has 'collector', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
@@ -148,18 +160,6 @@ sub _get_datapoint_configs {
 	
 	return @configs;
 }
-
-# Default enabled datapoints if none are specified:
-sub _build_datapoints {[qw(
-change_ts
-action
-source
-pri_key_value
-column_name
-old_value
-new_value
-)]};
-
 
 has '_datapoints', is => 'ro', isa => HashRef, default => sub {{}};
 has '_datapoints_context', is => 'ro', isa => HashRef, default => sub {{}};
