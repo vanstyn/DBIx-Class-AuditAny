@@ -528,6 +528,101 @@ sub record_change {
 }
 
 
+## subs called from hooks in Storage (Role):
+
+sub _record_inserts {
+	my ($self, $Source, @inserts) = @_;
+	
+	my $source_name = $Source->source_name;
+	my $action = 'insert';
+	my $func_name = $source_name . '::' . $action;
+	
+	return unless ($self->tracked_action_functions->{$func_name});
+	
+	my $local_changeset = 0;
+	unless ($self->active_changeset) {
+		$self->start_changeset;
+		$local_changeset = 1;
+	}
+	
+	my $class = $self->change_context_class;
+	foreach my $row (@inserts) {
+		my $ChangeContext = $class->new(
+			AuditObj				=> $self,
+			SourceContext		=> $self->tracked_sources->{$source_name},
+			ChangeSetContext	=> $self->active_changeset,
+			action				=> $action
+		);
+		$ChangeContext->record($row);
+		$self->record_change($ChangeContext);
+	}
+	
+	$self->finish_changeset if ($local_changeset);
+}
+
+sub _record_updates {
+	my ($self, $Source, @updates) = @_;
+	
+	my $source_name = $Source->source_name;
+	my $action = 'update';
+	my $func_name = $source_name . '::' . $action;
+	
+	return unless ($self->tracked_action_functions->{$func_name});
+	
+	my $local_changeset = 0;
+	unless ($self->active_changeset) {
+		$self->start_changeset;
+		$local_changeset = 1;
+	}
+	
+	my $class = $self->change_context_class;
+	foreach my $update (@updates) {
+		my $ChangeContext = $class->new(
+			AuditObj				=> $self,
+			SourceContext		=> $self->tracked_sources->{$source_name},
+			ChangeSetContext	=> $self->active_changeset,
+			action				=> $action,
+			old_columns			=> $update->{old},
+			new_columns			=> $update->{new}
+		);
+		$ChangeContext->record;
+		$self->record_change($ChangeContext);
+	}
+	
+	$self->finish_changeset if ($local_changeset);
+}
+
+sub _record_deletes {
+	my ($self, $Source, @deletes) = @_;
+	
+	my $source_name = $Source->source_name;
+	my $action = 'delete';
+	my $func_name = $source_name . '::' . $action;
+	
+	return unless ($self->tracked_action_functions->{$func_name});
+	
+	my $local_changeset = 0;
+	unless ($self->active_changeset) {
+		$self->start_changeset;
+		$local_changeset = 1;
+	}
+	
+	my $class = $self->change_context_class;
+	foreach my $row (@deletes) {
+		my $ChangeContext = $class->new(
+			AuditObj				=> $self,
+			SourceContext		=> $self->tracked_sources->{$source_name},
+			ChangeSetContext	=> $self->active_changeset,
+			action				=> $action,
+			old_columns			=> $row,
+		);
+		$ChangeContext->record;
+		$self->record_change($ChangeContext);
+	}
+	
+	$self->finish_changeset if ($local_changeset);
+}
+
 1;
 
 

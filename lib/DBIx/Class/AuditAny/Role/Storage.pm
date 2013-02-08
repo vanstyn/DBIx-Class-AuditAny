@@ -62,202 +62,135 @@ around 'txn_do' => sub {
 # insert is the most simple. Always applies to exactly 1 row:
 around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
-	my $Source = $args[0];
+	my ($Source, $to_insert) = @args;
 	
-	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert()');
+	#############################################################
+	# ---  Call original - scalar/list/void context agnostic  ---
+	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
+		: wantarray ? $self->$orig(@args)
+			: scalar $self->$orig(@args);
+	# --- 
+	#############################################################
 	
-	## Pre-call code
+	# Send the insert to each attached Auditor:
+	$_->_record_inserts($Source,$ret[0]) for ($self->all_auditors);
 	
-	# If we want to capture the data *being* inserted, do it here:
-	my $to_insert = $args[1];
-	
-	## -- Call original --
-	my $rv = $self->$orig(@args);
-	## -------------------
-	
-	# $rv should always be a hashref of what (*was*) inserted.
-	# Capture it here.
-	
-	my $source_name = $Source->source_name;
-	my $action = 'insert';
-	
-	foreach my $AuditAny ($self->all_auditors) {
-		my $func_name = $source_name . '::' . $action;
-		next unless ($AuditAny->tracked_action_functions->{$func_name});
-		
-		unless ($AuditAny->active_changeset) {
-			$AuditAny->start_changeset;
-			$AuditAny->auto_finish(1);
-		}
-		
-		my $class = $AuditAny->change_context_class;
-		my $ChangeContext = $class->new(
-			AuditObj				=> $AuditAny,
-			SourceContext		=> $AuditAny->tracked_sources->{$source_name},
-			ChangeSetContext	=> $AuditAny->active_changeset,
-			action				=> $action
-		);
-		$ChangeContext->record($rv);
-		$AuditAny->record_change($ChangeContext);
-	}
-	
-	return $rv;
+	return wantarray ? @ret : $ret[0];
 };
 
 around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;
-	my $Source = $args[0];
+	my ($Source, $cols, $data) = @args;
+	
+	#scream_color(BOLD.CYAN,$cols,$data);
+
 	
 	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert_bulk()');
 	
 	## Pre-call code
 	
-	my ($ret,@ret);
-	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
+	#############################################################
+	# ---  Call original - scalar/list/void context agnostic  ---
+	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
+		: wantarray ? $self->$orig(@args)
+			: scalar $self->$orig(@args);
+	# --- 
+	#############################################################
+
 	
 	## Post-call code
 
-	return wantarray ? @ret : $ret;
+	return wantarray ? @ret : $ret[0];
 };
 
 
 
 
-# For update we need:
-#  1. get the current/orig rows (before the update)
-#  2. come up with a valid condition ($post_cond) to use *after* the update
-#  3. get the updated/new rows (using the $post_cond from 2.)
-#  4. match up the orig and new rows
-
 around 'update' => sub {
 	my ($orig, $self, @args) = @_;
-	my $Source = $args[0];
-	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->update()');
-	
-	my $change = $args[1];
-	my $cond = $args[2];
-	
-	## Pre-call code
+	my ($Source,$change,$cond) = @args;
 	
 	# 1. Get the current rows that are going to be updated:
 	my $rows = $self->_get_raw_rows($Source,$cond);
 	
-	# 2. Do the actual update:
-	my ($ret,@ret);
-	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
+	# (A.) ##########################
+	# TODO: find cascade updates here
+	#################################
 	
-	## Post-call code
+	# 2. Do the actual update:
+	#############################################################
+	# ---  Call original - scalar/list/void context agnostic  ---
+	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
+		: wantarray ? $self->$orig(@args)
+			: scalar $self->$orig(@args);
+	# --- 
+	#############################################################
 	
 	# Get the primry keys, or all columns if there are none:
 	my @pri_cols = $Source->primary_columns;
 	@pri_cols = $Source->columns unless (scalar @pri_cols > 0);
 	
-	my $source_name = $Source->source_name;
-	my $action = 'update';
-	
-	foreach my $AuditAny ($self->all_auditors) {
+	# -----
+	# 3. Fetch the new values for -each- row, independently. 
+	# Build a condition specific to this row and fetch it, 
+	# taking into account the change that was just made:
+	my @updates = ();
+	foreach my $old (@$rows) {
+		my $new_rows = $self->_get_raw_rows($Source,{ map {
+			$_ => (exists $change->{$_} ? $change->{$_} : $old->{$_})
+		} @pri_cols });
 		
-		my $local_changeset = 0;
-		unless ($AuditAny->active_changeset) {
-			$AuditAny->start_changeset;
-			$local_changeset = 1;
-		}
-	
-		foreach my $row (@$rows) {
-		
-			my $func_name = $source_name . '::' . $action;
-			next unless ($AuditAny->tracked_action_functions->{$func_name});
+		# TODO/FIXME: How should we handle it if we got back 
+		# something other than exactly one row here?
+		die "Unexpected error while trying to read updated row" 
+			unless (scalar @$new_rows == 1);
 			
-			# -----
-			# 3. Fetch the new values for -each- row, independently. 
-			# Build a condition specific to this row, taking into 
-			# account the change that was just made:
-			my $new_rows = $self->_get_raw_rows($Source,{ map {
-				$_ => (exists $change->{$_} ? $change->{$_} : $row->{$_})
-			} @pri_cols });
-			# -----
-			
-			# TODO/FIXME: How should we handle it if we got back 
-			# something other than exactly one row here?
-			die "Unexpected error while trying to read updated row" 
-				unless (scalar @$new_rows == 1);
-				
-			my $new_row = pop @$new_rows;
-			
-			my $class = $AuditAny->change_context_class;
-			my $ChangeContext = $class->new(
-				AuditObj				=> $AuditAny,
-				SourceContext		=> $AuditAny->tracked_sources->{$source_name},
-				ChangeSetContext	=> $AuditAny->active_changeset,
-				action				=> $action,
-				old_columns			=> $row,
-				new_columns			=> $new_row
-			);
-			$ChangeContext->record;
-			$AuditAny->record_change($ChangeContext);
-		}
-		
-		$AuditAny->finish_changeset if ($local_changeset);
+		my $new = pop @$new_rows;
+		push @updates, { 
+			old => $old, 
+			new => $new 
+		};
 	}
+	# -----
 	
-	return wantarray ? @ret : $ret;
+	# (B.) ##########################
+	# TODO: re-fetch rows that were updated via cascade here
+	#################################
+	
+	# Send the updates to each attached Auditor:
+	$_->_record_updates($Source,@updates) for ($self->all_auditors);
+	
+	return wantarray ? @ret : $ret[0];
 };
-
-
 
 around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
-	my $Source = $args[0];
+	my ($Source, $cond) = @args;
 	
-	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->delete()');
+	# Get the current rows that are going to be deleted:
+	my $rows = $self->_get_raw_rows($Source,$cond);
 	
-	my $ident = $args[1];
-	#scream_color(BOLD.RED,$ident);
+	###########################
+	# TODO: find cascade deletes here
+	###########################
 	
-	my $source_name = $Source->source_name;
-	my $action = 'delete';
+	# Do the actual deletes:
+	#############################################################
+	# ---  Call original - scalar/list/void context agnostic  ---
+	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
+		: wantarray ? $self->$orig(@args)
+			: scalar $self->$orig(@args);
+	# --- 
+	#############################################################
 	
-	## Pre-call code
-
-	my $rows = $self->_get_raw_rows($Source,$ident);
 	
-	#scream_color(RED,\%returned_cols);
+	# TODO: should we go back to the db to make sure the rows are
+	# now gone as expected?
 	
-	my ($ret,@ret);
-	wantarray ? @ret = $self->$orig(@args) : $ret = $self->$orig(@args);
+	# Send the deletes to each attached Auditor:
+	$_->_record_deletes($Source,@$rows) for ($self->all_auditors);
 	
-	foreach my $AuditAny ($self->all_auditors) {
-		
-		my $local_changeset = 0;
-		unless ($AuditAny->active_changeset) {
-			$AuditAny->start_changeset;
-			$local_changeset = 1;
-		}
-	
-		foreach my $row (@$rows) {
-		
-			my $func_name = $source_name . '::' . $action;
-			next unless ($AuditAny->tracked_action_functions->{$func_name});
-			
-			my $class = $AuditAny->change_context_class;
-			my $ChangeContext = $class->new(
-				AuditObj				=> $AuditAny,
-				SourceContext		=> $AuditAny->tracked_sources->{$source_name},
-				ChangeSetContext	=> $AuditAny->active_changeset,
-				action				=> $action,
-				old_columns			=> $row
-			);
-			$ChangeContext->record;
-			$AuditAny->record_change($ChangeContext);
-		}
-		
-		$AuditAny->finish_changeset if ($local_changeset);
-	}
-	# ---
-	
-	## Post-call code
-
-	return wantarray ? @ret : $ret;
+	return wantarray ? @ret : $ret[0];
 };
 
 # (logic adapted from DBIx::Class::Storage::DBI::insert)
