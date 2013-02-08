@@ -1,8 +1,12 @@
 package DBIx::Class::AuditAny::Role::Schema;
-use Moo::Role;
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Schema objects
+
+use Moo::Role;
+use MooX::Types::MooseLike::Base qw(:all);
 
 # This Role is for interfaces only. See the Storage role for the actual
 # hooks/logic

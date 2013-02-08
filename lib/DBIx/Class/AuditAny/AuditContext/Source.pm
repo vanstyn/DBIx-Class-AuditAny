@@ -1,9 +1,17 @@
 package DBIx::Class::AuditAny::AuditContext::Source;
-use Moose;
-extends 'DBIx::Class::AuditAny::AuditContext';
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Default 'Source' context object class for DBIx::Class::AuditAny
+
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+extends 'DBIx::Class::AuditAny::AuditContext';
+
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+
 
 has 'ResultSource', is => 'ro', required => 1;
 has 'source', is => 'ro', lazy => 1, default => sub { (shift)->ResultSource->source_name };
@@ -19,7 +27,7 @@ sub _build_local_datapoint_data {
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('source') };
 }
 
-has 'pri_key_column', is => 'ro', isa => 'Maybe[Str]', lazy => 1, default => sub { 
+has 'pri_key_column', is => 'ro', isa => Maybe[Str], lazy => 1, default => sub { 
 	my $self = shift;
 	my @cols = $self->primary_columns;
 	return undef unless (scalar(@cols) > 0);
@@ -27,7 +35,7 @@ has 'pri_key_column', is => 'ro', isa => 'Maybe[Str]', lazy => 1, default => sub
 	return join($sep,@cols);
 };
 
-has 'pri_key_count', is => 'ro', isa => 'Int', lazy => 1, default => sub { 
+has 'pri_key_count', is => 'ro', isa => Int, lazy => 1, default => sub { 
 	my $self = shift;
 	return scalar($self->primary_columns);
 };

@@ -1,9 +1,17 @@
 package DBIx::Class::AuditAny::Collector::AutoDBIC;
-use Moose;
-extends 'DBIx::Class::AuditAny::Collector::DBIC';
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Collector class for recording AuditAny changes in auto-generated DBIC schemas
+
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+extends 'DBIx::Class::AuditAny::Collector::DBIC';
+
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+
 
 use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::SchemaMaker;
@@ -11,14 +19,14 @@ use String::CamelCase qw(decamelize);
 use Digest::MD5 qw(md5_hex);
 use Data::Dumper;
 
-has 'connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
+has 'connect', is => 'ro', isa => ArrayRef, lazy => 1, default => sub {
 	my $self = shift;
 	my $db = $self->sqlite_db or die "no 'connect' or 'sqlite_db' specified.";
 	return [ "dbi:SQLite:dbname=$db","","", { AutoCommit => 1 } ];
 };
 
-has 'sqlite_db', is => 'ro', isa => 'Maybe[Str]', default => undef;
-has 'auto_deploy', is => 'ro', isa => 'Bool', default => 1;
+has 'sqlite_db', is => 'ro', isa => Maybe[Str], default => sub{undef};
+has 'auto_deploy', is => 'ro', isa => Bool, default => sub{1};
 
 has 'target_schema_namespace', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
@@ -35,32 +43,32 @@ has '+target_schema', default => sub {
 	return $schema;
 };
 
-has 'target_source', is => 'ro', isa => 'Str', lazy => 1, 
+has 'target_source', is => 'ro', isa => Str, lazy => 1, 
  default => sub { (shift)->changeset_source_name };
 
-has 'changeset_source_name', 		is => 'ro', isa => 'Str', default => 'AuditChangeSet';
-has 'change_source_name', 			is => 'ro', isa => 'Str', default => 'AuditChange';
-has 'column_change_source_name',	is => 'ro', isa => 'Str', default => 'AuditChangeColumn';
-has 'deploy_info_source_name',	is => 'ro', isa => 'Str', default => 'DeployInfo';
+has 'changeset_source_name', 		is => 'ro', isa => Str, default => sub{'AuditChangeSet'};
+has 'change_source_name', 			is => 'ro', isa => Str, default => sub{'AuditChange'};
+has 'column_change_source_name',	is => 'ro', isa => Str, default => sub{'AuditChangeColumn'};
+has 'deploy_info_source_name',	is => 'ro', isa => Str, default => sub{'DeployInfo'};
 
-has 'changeset_table_name', is => 'ro', isa => 'Str', lazy => 1, 
+has 'changeset_table_name', is => 'ro', isa => Str, lazy => 1, 
  default => sub { decamelize((shift)->changeset_source_name) };
 	
-has 'change_table_name', is => 'ro', isa => 'Str', lazy => 1, 
+has 'change_table_name', is => 'ro', isa => Str, lazy => 1, 
  default => sub { decamelize((shift)->change_source_name) };
 	
-has 'column_change_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
+has 'column_change_table_name',	is => 'ro', isa => Str, lazy => 1, 
  default => sub { decamelize((shift)->column_change_source_name) };
 
-has 'deploy_info_table_name',	is => 'ro', isa => 'Str', lazy => 1, 
+has 'deploy_info_table_name',	is => 'ro', isa => Str, lazy => 1, 
  default => sub { decamelize((shift)->deploy_info_source_name) };
 
-has '+change_data_rel', default => 'audit_changes';
-has '+column_data_rel', default => 'audit_change_columns';
-has 'reverse_change_data_rel', is => 'ro', isa => 'Str', default => 'change';
-has 'reverse_changeset_data_rel', is => 'ro', isa => 'Str', default => 'changeset';
+has '+change_data_rel', default => sub{'audit_changes'};
+has '+column_data_rel', default => sub{'audit_change_columns'};
+has 'reverse_change_data_rel', is => 'ro', isa => Str, default => sub{'change'};
+has 'reverse_changeset_data_rel', is => 'ro', isa => Str, default => sub{'changeset'};
 
-has 'changeset_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+has 'changeset_columns', is => 'ro', isa => ArrayRef, lazy => 1,
  default => sub {
 	my $self = shift;
 	return [
@@ -74,7 +82,7 @@ has 'changeset_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
 	];
 };
 
-has 'change_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+has 'change_columns', is => 'ro', isa => ArrayRef, lazy => 1,
  default => sub {
 	my $self = shift;
 	return [
@@ -94,7 +102,7 @@ has 'change_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
 	];
 };
 
-has 'change_column_columns', is => 'ro', isa => 'ArrayRef', lazy => 1,
+has 'change_column_columns', is => 'ro', isa => ArrayRef, lazy => 1,
  default => sub {
 	my $self = shift;
 	return [
@@ -136,7 +144,7 @@ sub get_context_column_infos {
 }
 
 
-has 'schema_namespace_config', is => 'ro', isa => 'HashRef', init_arg => undef, lazy => 1,
+has 'schema_namespace_config', is => 'ro', isa => HashRef, init_arg => undef, lazy => 1,
  default => sub {
 	my $self = shift;
 	

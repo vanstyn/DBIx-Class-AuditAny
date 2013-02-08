@@ -1,9 +1,17 @@
 package DBIx::Class::AuditAny::AuditContext::ChangeSet;
-use Moose;
-extends 'DBIx::Class::AuditAny::AuditContext';
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Default 'ChangeSet' context object class for DBIx::Class::AuditAny
+
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+extends 'DBIx::Class::AuditAny::AuditContext';
+
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);
+
 
 use Time::HiRes qw(gettimeofday tv_interval);
 
@@ -13,14 +21,14 @@ sub _build_local_datapoint_data {
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('set') };
 }
 
-has 'changes', is => 'ro', isa => 'ArrayRef', default => sub {[]};
-has 'finished', is => 'rw', isa => 'Bool', default => 0, init_arg => undef;
+has 'changes', is => 'ro', isa => ArrayRef, default => sub {[]};
+has 'finished', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
 
-has 'changeset_ts', is => 'ro', isa => 'DateTime', lazy => 1, default => sub { (shift)->get_dt };
+has 'changeset_ts', is => 'ro', isa => InstanceOf['DateTime'], lazy => 1, default => sub { (shift)->get_dt };
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
 
-has 'changeset_finish_ts', is => 'rw', isa => 'Maybe[DateTime]', default => undef;
-has 'changeset_elapsed', is => 'rw', default => undef;
+has 'changeset_finish_ts', is => 'rw', isa => Maybe[InstanceOf['DateTime']], default => sub{undef};
+has 'changeset_elapsed', is => 'rw', default => sub{undef};
 
 sub BUILD {
 	my $self = shift;

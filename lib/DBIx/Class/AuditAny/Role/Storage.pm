@@ -1,13 +1,16 @@
 package DBIx::Class::AuditAny::Role::Storage;
-use Moo::Role;
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Storage objects
 
+use Moo::Role;
+use MooX::Types::MooseLike::Base qw(:all);
+
 ## TODO:
 ##  1. track rekey in update
 ##  2. track changes in FK with cascade
-
 
 
 use strict;

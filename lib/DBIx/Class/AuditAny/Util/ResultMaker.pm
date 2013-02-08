@@ -1,18 +1,25 @@
 package # Hide from PAUSE 
     DBIx::Class::AuditAny::Util::ResultMaker;
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Util package for on-the-fly creation of DBIC Result classes
 
-use Moose;
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+
 require Class::MOP::Class;
 use DBIx::Class::AuditAny::Util;
 
-has 'class_name', 			is => 'ro', isa => 'Str', required => 1;
-has 'class_opts', 			is => 'ro', isa => 'HashRef', default => sub {{}};
-has 'table_name', 			is => 'ro', isa => 'Str', required => 1;
-has 'columns', 				is => 'ro', isa => 'ArrayRef', required => 1;
-has 'call_class_methods',	is => 'ro', isa => 'ArrayRef', default => sub {[]};
+has 'class_name', 			is => 'ro', isa => Str, required => 1;
+has 'class_opts', 			is => 'ro', isa => HashRef, default => sub {{}};
+has 'table_name', 			is => 'ro', isa => Str, required => 1;
+has 'columns', 				is => 'ro', isa => ArrayRef, required => 1;
+has 'call_class_methods',	is => 'ro', isa => ArrayRef, default => sub {[]};
 
 sub initialize {
 	my $self = shift;

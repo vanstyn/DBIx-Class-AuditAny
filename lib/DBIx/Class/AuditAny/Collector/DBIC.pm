@@ -1,20 +1,28 @@
 package DBIx::Class::AuditAny::Collector::DBIC;
-use Moose;
-extends 'DBIx::Class::AuditAny::Collector';
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Collector class for recording AuditAny changes in DBIC schemas
 
-has 'target_schema', is => 'ro', isa => 'Object', lazy => 1, default => sub { (shift)->AuditObj->schema };
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+extends 'DBIx::Class::AuditAny::Collector';
 
-has 'target_source', is => 'ro', isa => 'Str', required => 1;
-has 'change_data_rel', is => 'ro', isa => 'Maybe[Str]';
-has 'column_data_rel', is => 'ro', isa => 'Maybe[Str]';
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+
+
+has 'target_schema', is => 'ro', isa => Object, lazy => 1, default => sub { (shift)->AuditObj->schema };
+
+has 'target_source', is => 'ro', isa => Str, required => 1;
+has 'change_data_rel', is => 'ro', isa => Maybe[Str];
+has 'column_data_rel', is => 'ro', isa => Maybe[Str];
 
 
 
 # the top level source; could be either change or changeset
-has 'targetSource', is => 'ro', isa => 'Object', 
+has 'targetSource', is => 'ro', isa => Object, 
  lazy => 1, init_arg => undef, default => sub {
 	my $self = shift;
 	my $Source = $self->target_schema->source($self->target_source) 
@@ -22,13 +30,13 @@ has 'targetSource', is => 'ro', isa => 'Object',
 	return $Source;
 };
 
-has 'changesetSource', is => 'ro', isa => 'Maybe[Object]', 
+has 'changesetSource', is => 'ro', isa => Maybe[Object], 
  lazy => 1, init_arg => undef, default => sub {
 	my $self = shift;
 	return $self->change_data_rel ? $self->targetSource : undef;
 };
 
-has 'changeSource', is => 'ro', isa => 'Object', 
+has 'changeSource', is => 'ro', isa => Object, 
  lazy => 1, init_arg => undef, default => sub {
 	my $self = shift;
 	my $SetSource = $self->changesetSource or return $self->targetSource;
@@ -37,7 +45,7 @@ has 'changeSource', is => 'ro', isa => 'Object',
 	return $Source;
 };
 
-has 'columnSource', is => 'ro', isa => 'Maybe[Object]', 
+has 'columnSource', is => 'ro', isa => Maybe[Object], 
  lazy => 1, init_arg => undef, default => sub {
 	my $self = shift;
 	return undef unless ($self->column_data_rel);
@@ -46,7 +54,7 @@ has 'columnSource', is => 'ro', isa => 'Maybe[Object]',
 	return $Source;
 };
 
-has 'changeset_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
+has 'changeset_datapoints', is => 'ro', isa => ArrayRef[Str],
  lazy => 1, default => sub {
 	my $self = shift;
 	return [] unless ($self->changesetSource);
@@ -56,7 +64,7 @@ has 'changeset_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
 	return \@names;
 };
 
-has 'change_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
+has 'change_datapoints', is => 'ro', isa => ArrayRef[Str],
  lazy => 1, default => sub {
 	my $self = shift;
 	my @contexts = qw(source change);
@@ -67,7 +75,7 @@ has 'change_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
 	return \@names;
 };
 
-has 'column_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
+has 'column_datapoints', is => 'ro', isa => ArrayRef[Str],
  lazy => 1, default => sub {
 	my $self = shift;
 	return [] unless ($self->columnSource);
@@ -77,7 +85,7 @@ has 'column_datapoints', is => 'ro', isa => 'ArrayRef[Str]',
 	return \@names;
 };
 
-has 'write_sources', is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, default => sub {
+has 'write_sources', is => 'ro', isa => ArrayRef[Str], lazy => 1, default => sub {
 	my $self = shift;
 	my @sources = ();
 	push @sources, $self->changesetSource->source_name if ($self->changesetSource);
