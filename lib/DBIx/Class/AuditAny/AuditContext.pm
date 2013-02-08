@@ -1,15 +1,21 @@
 package # Hide from PAUSE 
      DBIx::Class::AuditAny::AuditContext;
-
-use Moose;
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Base class for context objects in DBIx::Class::AuditAny
 
-has 'AuditObj', is => 'ro', isa => 'DBIx::Class::AuditAny', required => 1;
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
 
-has 'tiedContexts', is => 'ro', isa => 'ArrayRef[Object]', lazy_build => 1;
-has 'local_datapoint_data', is => 'ro', isa => 'HashRef', lazy_build => 1;
+#use Moose;
+#use MooseX::AttributeShortcuts; # gives us: is => 'lazy' (see lazy_build)
+
+has 'AuditObj', is => 'ro', isa => InstanceOf['DBIx::Class::AuditAny'], required => 1;
+
+has 'tiedContexts', is => 'lazy', isa => ArrayRef[Object];#, lazy_build => 1;
+has 'local_datapoint_data', is => 'lazy', isa => HashRef;#, lazy_build => 1;
 
 sub _build_tiedContexts { die "Virtual method" }
 sub _build_local_datapoint_data { die "Virtual method" }

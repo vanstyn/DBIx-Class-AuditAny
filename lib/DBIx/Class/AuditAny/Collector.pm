@@ -1,18 +1,25 @@
 package # Hide from PAUSE 
      DBIx::Class::AuditAny::Collector;
-
-use Moose;
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Base class for all Collector classes in DBIx::Class::AuditAny
 
+use Moo;
+use MooX::Types::MooseLike::Base qw(:all);
+
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+
+
 has 'AuditObj', is => 'ro', required => 1;
-has 'collect_coderef', is => 'ro', isa => 'Maybe[CodeRef]', default => undef;
+has 'collect_coderef', is => 'ro', isa => Maybe[CodeRef], default => sub{undef};
 
 # these are part of the base class because the AuditObj expects them in all
 # Collectors to know if a particular tracked source is also a source used
 # by the collector which would create a deep recursion situation
-has 'writes_bound_schema_sources', is => 'ro', isa => 'ArrayRef[Str]', lazy => 1, default => sub {[]};
+has 'writes_bound_schema_sources', is => 'ro', isa => ArrayRef[Str], lazy => 1, default => sub {[]};
 
 sub record_changes {
 	my $self = shift;

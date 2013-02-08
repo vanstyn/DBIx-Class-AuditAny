@@ -1,9 +1,14 @@
 package DBIx::Class::AuditAny::AuditContext::Change;
-use Moose;
-extends 'DBIx::Class::AuditAny::AuditContext';
+use strict;
+use warnings;
 
 # VERSION
 # ABSTRACT: Default 'Change' context object class for DBIx::Class::AuditAny
+
+use Moose;
+use MooseX::AttributeShortcuts; # gives us: is => 'lazy' (see lazy_build)
+extends 'DBIx::Class::AuditAny::AuditContext';
+
 
 use Time::HiRes qw(gettimeofday tv_interval);
 use DBIx::Class::AuditAny::Util;
@@ -16,7 +21,7 @@ has 'action', is => 'ro', isa => 'Str', required => 1;
 # to identify changes
 has 'new_columns_from_storage', is => 'ro', isa => 'Bool', default => 1;
 
-has 'allowed_actions', is => 'ro', isa => 'ArrayRef', lazy_build => 1;
+has 'allowed_actions', is => 'lazy', isa => 'ArrayRef';#, lazy_build => 1;
 sub _build_allowed_actions { [qw(insert update delete)] };
 
 has 'executed', is => 'rw', isa => 'Bool', default => 0, init_arg => undef;
@@ -150,7 +155,7 @@ sub record {
 
 
 
-has 'action_id_map', is => 'ro', isa => 'HashRef[Str]', lazy_build => 1;
+has 'action_id_map', is => 'lazy', isa => 'HashRef[Str]';#, lazy_build => 1;
 sub _build_action_id_map {{
 	insert => 1,
 	update => 2,
