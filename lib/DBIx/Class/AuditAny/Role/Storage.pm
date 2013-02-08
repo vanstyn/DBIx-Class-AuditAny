@@ -78,16 +78,27 @@ around 'insert' => sub {
 	return wantarray ? @ret : $ret[0];
 };
 
+
+### TODO: ###
+# insert_bulk is a tricky case. It exists for the purpose of performance,
+# and skips reading back in the inserted row(s). BUT, we need to read back
+# in the inserted row, and we have no safe way of doing that with a bulk
+# insert (auto-generated auti-inc keys, etc). DBIC was already designed with
+# with this understanding, and so insert_bulk is already only called when 
+# no result is needed/expected back: DBIx::Class::ResultSet->populate() called
+# in *void* context. 
+#
+# Based on this fact, I think that the only rational way to be able to
+# Audit the inserted rows is to override and convert any calls to insert_bulk()
+# into calls to regular calls to insert(). Interferring with the original
+# flow/operation is certainly not ideal, but I don't see any alternative.
 around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;
 	my ($Source, $cols, $data) = @args;
 	
-	#scream_color(BOLD.CYAN,$cols,$data);
-
-	
-	#scream('[' . (wantarray ? 'LIST' : 'SCAL') . ']' . $Source->source_name . '->insert_bulk()');
-	
-	## Pre-call code
+	#
+	# TODO ....
+	#
 	
 	#############################################################
 	# ---  Call original - scalar/list/void context agnostic  ---
@@ -96,9 +107,6 @@ around 'insert_bulk' => sub {
 			: scalar $self->$orig(@args);
 	# --- 
 	#############################################################
-
-	
-	## Post-call code
 
 	return wantarray ? @ret : $ret[0];
 };
