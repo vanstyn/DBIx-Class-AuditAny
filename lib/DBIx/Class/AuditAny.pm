@@ -1,18 +1,15 @@
 package DBIx::Class::AuditAny;
 use strict;
 use warnings;
-use Moo;
 
 # VERSION
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
-#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);
+use Moo;
 use MooX::Types::MooseLike::Base qw(:all);
-#use MooX::Types::MooseLike::Base qw(HashRef ArrayRef Str Bool Maybe Object);
-	
-use aliased 'DBIx::Class::Schema' => 'DBIC_Schema';
-#use MooseX::Types -declare => [ qw(DBIC_Schema) ];
 
+#use Moose;
+#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);
 
 use Class::MOP;
 use Class::MOP::Class;
@@ -21,11 +18,10 @@ use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 use DBIx::Class::AuditAny::Role::Schema;
 
-
 has 'time_zone', is => 'ro', isa => Str, default => sub{'local'};
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
-has 'schema', is => 'ro', required => 1, isa => Object; #<--- FIX ME BACK TO DBIx::Class::Schema !!!
+has 'schema', is => 'ro', required => 1, isa => InstanceOf['DBIx::Class::Schema']; #<--- This won't go back to Moose
 has 'track_immutable', is => 'ro', isa => Bool, default => sub{0};
 has 'track_actions', is => 'ro', isa => ArrayRef, default => sub { [qw(insert update delete)] };
 has 'allow_multiple_auditors', is => 'ro', isa => Bool, default => sub{0};
