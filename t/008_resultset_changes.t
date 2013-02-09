@@ -79,6 +79,31 @@ ok(
 );
 
 
+# insert_bulk not yet
+SKIP: {
+	ok(
+		# Force VOID context (needed to test Storgae::insert_bulk codepath)
+		do { $schema->resultset('Contact')->populate([
+			[qw(first last)],
+			[qw(John Stossel)],
+			[qw(Richard Dawkins)],
+		]); 1; },
+		"Insert several rows at once with populate (arrayref/arrayref syntax)"
+	);
+
+	ok(
+		# Force VOID context (needed to test Storgae::insert_bulk codepath)
+		do { $schema->resultset('Contact')->populate([
+			{ first => 'Christopher',	last => 'Hitchens' },
+			{ first => 'Sam', 			last => 'Harris' },
+		]); 1; },
+		"Insert several rows at once with populate (arrayref/hashref syntax)"
+	);
+};
+
+
+#####################
+
 
 ok(
 	my $audit_schema = $Auditor->collector->target_schema,
