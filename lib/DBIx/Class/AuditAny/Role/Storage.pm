@@ -30,6 +30,8 @@ sub all_auditors { @{(shift)->auditors} }
 sub auditor_count { scalar (shift)->all_auditors }
 sub add_auditor { push @{(shift)->auditors},(shift) }
 
+##
+# TODO: proper handling for nested txn_do calls. Use scope guard
 around 'txn_do' => sub {
 	my ($orig, $self, @args) = @_;
 	

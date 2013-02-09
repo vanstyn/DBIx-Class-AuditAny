@@ -11,11 +11,8 @@ use MooX::Types::MooseLike::Base qw(:all);
 # This Role is for interfaces only. See the Storage role for the actual
 # hooks/logic
 
-use strict;
-use warnings;
 use Try::Tiny;
 use DBIx::Class::AuditAny::Util;
-
 use DBIx::Class::AuditAny::Role::Storage;
 
 requires 'txn_do';
