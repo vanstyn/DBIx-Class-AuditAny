@@ -61,8 +61,6 @@ has 'datapoints', is => 'ro', isa => ArrayRef[Str],
   new_value
 )]};
 
-
-
 has 'collector', is => 'ro', lazy => 1, default => sub {
 	my $self = shift;
 	return ($self->collector_class)->new(
@@ -269,34 +267,7 @@ sub _init_apply_schema_class {
 	$self->schema->_apply_storage_role;
 }
 
-sub start_changeset {
-	my $self = shift;
-	die "Cannot start_changeset because a changeset is already active" if ($self->active_changeset);
-	
-	my $class = $self->changeset_context_class;
-	$self->active_changeset($class->new( AuditObj => $self ));
-	return $self->active_changeset;
-}
 
-sub finish_changeset {
-	my $self = shift;
-	die "Cannot finish_changeset because there isn't one active" unless ($self->active_changeset);
-	
-	unless($self->record_empty_changes) {
-		my $count_cols = 0;
-		$count_cols = $count_cols + scalar($_->all_column_changes) 
-			for (@{$self->active_changeset->changes});
-		unless ($count_cols > 0) {
-			$self->clear_changeset;
-			return 1;
-		}
-	}
-	
-	$self->collector->record_changes($self->active_changeset);
-
-	$self->clear_changeset;
-	return 1;
-}
 
 sub clear_changeset {
 	my $self = shift;
@@ -515,6 +486,41 @@ sub _add_additional_row_methods {
 }
 
 
+##########
+##########
+
+
+
+sub start_changeset {
+	my $self = shift;
+	die "Cannot start_changeset because a changeset is already active" if ($self->active_changeset);
+	
+	my $class = $self->changeset_context_class;
+	$self->active_changeset($class->new( AuditObj => $self ));
+	return $self->active_changeset;
+}
+
+sub finish_changeset {
+	my $self = shift;
+	die "Cannot finish_changeset because there isn't one active" unless ($self->active_changeset);
+	
+	unless($self->record_empty_changes) {
+		my $count_cols = 0;
+		$count_cols = $count_cols + scalar($_->all_column_changes) 
+			for (@{$self->active_changeset->changes});
+		unless ($count_cols > 0) {
+			$self->clear_changeset;
+			return 1;
+		}
+	}
+	
+	$self->collector->record_changes($self->active_changeset);
+
+	$self->clear_changeset;
+	return 1;
+}
+
+# this is being replaced with record_changes:
 sub record_change {
 	my $self = shift;
 	my $ChangeContext = shift;
@@ -526,6 +532,75 @@ sub record_change {
 	$self->active_changeset->add_changes($ChangeContext);
 	$self->finish_changeset if ($self->auto_finish);
 }
+
+
+sub record_changes {
+	my ($self, $ChangeContexts) = @_;
+	
+	my $local_changeset = 0;
+	unless ($self->active_changeset) {
+		$self->start_changeset;
+		$local_changeset = 1;
+	}
+	
+	$self->active_changeset->add_changes($_) for (@$ChangeContexts);
+	
+	$self->finish_changeset if ($local_changeset);
+}
+
+
+# -- This is a glorified tmp variable used just to allow groups of changes
+# to be associated with the correct auditor. TODO: This is probably a 
+# poor solution to a complex scoping problem. This exposes us to the 
+# risk of processing stale data, so we have to be sure (manually) to keep 
+# this clear/empty outside its *very* short lifespan, by regularly resetting it
+has '_current_change_group', is => 'rw', isa => ArrayRef[Object], default => sub{[]};
+# --
+
+# @inserts is expected as a list of hashrefs with these keys:
+# { 
+#   to_columns => $hashref
+# }
+#
+sub _start_inserts {
+	my ($self, $Source, @inserts) = @_;
+	
+	$self->_current_change_group([]); # just for good measure
+	
+	my $source_name = $Source->source_name;
+	my $action = 'insert';
+	my $func_name = $source_name . '::' . $action;
+	
+	return () unless ($self->tracked_action_functions->{$func_name});
+	
+	my @ChangeContexts = map {
+		$self->_new_change_context(
+			AuditObj				=> $self,
+			SourceContext		=> $self->tracked_sources->{$source_name},
+			ChangeSetContext	=> $self->active_changeset, # could be undef
+			action				=> $action,
+			to_columns			=> $_->{to_columns}
+		)
+	} @inserts;
+	
+	$self->_current_change_group(\@ChangeContexts);
+	return @ChangeContexts;
+}
+
+sub _finish_current_change_group {
+	my $self = shift;
+	$self->record_changes($self->_current_change_group);
+	$self->_current_change_group([]); #<-- critical to reset!
+}
+
+# factory-like helper:
+sub _new_change_context {
+	my $self = shift;
+	my $class = $self->change_context_class;
+	return $class->new(@_);
+}
+
+
 
 
 ## subs called from hooks in Storage (Role):

@@ -30,6 +30,8 @@ sub all_auditors { @{(shift)->auditors} }
 sub auditor_count { scalar (shift)->all_auditors }
 sub add_auditor { push @{(shift)->auditors},(shift) }
 
+# TODO: wrap other txn methods
+
 ##
 # TODO: proper handling for nested txn_do calls. Use scope guard
 around 'txn_do' => sub {
@@ -61,10 +63,36 @@ around 'txn_do' => sub {
 };
 
 
+## insert is the most simple. Always applies to exactly 1 row:
+#around 'insert' => sub {
+#	my ($orig, $self, @args) = @_;
+#	my ($Source, $to_insert) = @args;
+#	
+#	#############################################################
+#	# ---  Call original - scalar/list/void context agnostic  ---
+#	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
+#		: wantarray ? $self->$orig(@args)
+#			: scalar $self->$orig(@args);
+#	# --- 
+#	#############################################################
+#	
+#	# Send the insert to each attached Auditor:
+#	$_->_record_inserts($Source,$ret[0]) for ($self->all_auditors);
+#	
+#	return wantarray ? @ret : $ret[0];
+#};
+
 # insert is the most simple. Always applies to exactly 1 row:
 around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
 	my ($Source, $to_insert) = @args;
+	
+	# Start new insert operation within each Auditor and get back
+	# all the created ChangeContexts from all auditors. The auditors
+	# will keep track of their own changes temporarily in a "group":
+	my @ChangeContexts = map {
+		$_->_start_inserts($Source,{ to_columns => $to_insert })
+	} $self->all_auditors;
 	
 	#############################################################
 	# ---  Call original - scalar/list/void context agnostic  ---
@@ -74,8 +102,12 @@ around 'insert' => sub {
 	# --- 
 	#############################################################
 	
-	# Send the insert to each attached Auditor:
-	$_->_record_inserts($Source,$ret[0]) for ($self->all_auditors);
+	# Update each ChangeContext with the result data:
+	$_->record($ret[0]) for (@ChangeContexts);
+	
+	# Tell each auditor that we're done and to record the change group
+	# into the active changeset:
+	$_->_finish_current_change_group for ($self->all_auditors);
 	
 	return wantarray ? @ret : $ret[0];
 };

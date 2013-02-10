@@ -37,10 +37,31 @@ sub BUILD {
 	$self->changeset_ts;
 }
 
-sub add_changes { push @{(shift)->changes}, @_ }
+
 sub all_changes { @{(shift)->changes} }
 sub count_changes { scalar(@{(shift)->changes}) }
 sub all_column_changes { map { $_->all_column_changes } (shift)->all_changes }
+
+sub add_changes {
+	my ($self, @ChangeContexts) = @_;
+	foreach my $ChangeContext (@ChangeContexts) {
+	
+		# New: It is now possible that there is no attached ChangeSet yet, since ChangeContext
+		# is now created -before- the action operation is executed, and thus before
+		# a changeset is automatically started (we do this so we don't have to worry
+		# about exceptions). But by the time ->record() is called, we know the operation
+		# has succeeded, and we also know that a new changeset has been created if the
+		# operation was not already wrapped in a transaction. Se we just set it now:
+		$ChangeContext->ChangeSetContext($self) unless ($ChangeContext->ChangeSetContext);
+		
+		# Extra check for good measure:
+		die "Attempted to add changes attached to a different changeset!"
+			unless ($self == $ChangeContext->ChangeSetContext);
+	
+		push @{$self->changes}, $ChangeContext;
+	}
+}
+
 
 sub finish {
 	my $self = shift;

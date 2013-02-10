@@ -18,7 +18,7 @@ use Time::HiRes qw(gettimeofday tv_interval);
 use DBIx::Class::AuditAny::Util;
 
 has 'SourceContext', is => 'ro', isa => Object, required => 1;
-has 'ChangeSetContext', is => 'ro', isa => Object, required => 1;
+has 'ChangeSetContext', is => 'rw', isa => Maybe[Object], default => sub{undef};
 has 'action', is => 'ro', isa => Enum[qw(insert update delete)], required => 1;
 
 # old_columns: The column values of the row, -according to the db-
@@ -43,8 +43,8 @@ has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 #has 'new_columns_from_storage', is => 'ro', isa => Bool, default => sub{1};
 
 
-has 'allowed_actions', is => 'lazy', isa => ArrayRef;#, lazy_build => 1;
-sub _build_allowed_actions { [qw(insert update delete)] };
+#has 'allowed_actions', is => 'lazy', isa => ArrayRef;#, lazy_build => 1;
+#sub _build_allowed_actions { [qw(insert update delete)] };
 
 has 'executed', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
 has 'recorded', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
@@ -104,10 +104,6 @@ has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
 has 'change_elapsed', is => 'rw', default => sub{undef};
 
 
-
-
-
-
 sub record {
 	my $self = shift;
 	my $new_columns = shift;
@@ -121,13 +117,8 @@ sub record {
 		scalar(keys %$new_columns) > 0
 	);
 	
-	#$self->newRow;
-	
 	$self->recorded(1);
 }
-
-
-
 
 
 has 'action_id_map', is => 'lazy', isa => HashRef[Str];#, lazy_build => 1;
