@@ -6,7 +6,7 @@ use warnings;
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
 use Moo;
-use MooX::Types::MooseLike::Base qw(:all);
+use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
 #use Moose;
 #use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);

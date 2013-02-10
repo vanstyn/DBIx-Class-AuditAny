@@ -6,30 +6,14 @@ use warnings;
 # ABSTRACT: Object class for AuditAny datapoint configs
 
 use Moo;
-use MooX::Types::MooseLike::Base 0.17 qw(:all);
-
-#use Moose;
-#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
-
-# ----
-# MooX::Types::MooseLike::Base has no union support ( isa => Str | CodeRef ):
-# UPDATE: 'AnyOf' was added in MooX::Types::MooseLike::Base 0.17
-#  used for:  isa => AnyOf['Str','CodeRef']  below
-#   note: per IRC discussions, the AnyOf API may change 
-#   in MooX::Types::MooseLike::Base 0.18 to use non-string params
-#
-#my $StrCodeRef = sub {
-#	(! ref($_[0]) || ref($_[0]) eq 'CODE') or
-#		die "$_[0] is not a Str or a CodeRef";
-#};
-# ----
+use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
 use Switch qw(switch);
 
 has 'AuditObj', is => 'ro', isa => InstanceOf['DBIx::Class::AuditAny'], required => 1;
 has 'name', is => 'ro', isa => Str, required => 1;
 has 'context', is => 'ro', isa => Str, required => 1;
-has 'method', is => 'ro', isa => AnyOf['Str','CodeRef'], required => 1;
+has 'method', is => 'ro', isa => AnyOf[Str,CodeRef], required => 1;
 has 'user_defined', is => 'ro', isa => Bool, default => sub{0};
 
 # Optional extra attr to keep track of a separate 'original' name. Auto

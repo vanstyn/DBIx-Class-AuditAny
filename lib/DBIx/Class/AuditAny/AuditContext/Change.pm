@@ -6,7 +6,7 @@ use warnings;
 # ABSTRACT: Default 'Change' context object class for DBIx::Class::AuditAny
 
 use Moo;
-use MooX::Types::MooseLike::Base qw(:all);
+use MooX::Types::MooseLike::Base 0.19 qw(:all);
 extends 'DBIx::Class::AuditAny::AuditContext';
 
 #use Moose;
@@ -17,13 +17,31 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 use Time::HiRes qw(gettimeofday tv_interval);
 use DBIx::Class::AuditAny::Util;
 
-has 'SourceContext', is => 'ro', required => 1;
-has 'ChangeSetContext', isa => Maybe[Object], is => 'ro', default => sub{undef};
-has 'action', is => 'ro', isa => Str, required => 1;
+has 'SourceContext', is => 'ro', isa => Object, required => 1;
+has 'ChangeSetContext', is => 'ro', isa => Object, required => 1;
+has 'action', is => 'ro', isa => Enum[qw(insert update delete)], required => 1;
 
-# whether or not to fetch the row from storage again after the action
-# to identify changes
-has 'new_columns_from_storage', is => 'ro', isa => Bool, default => sub{1};
+# old_columns: The column values of the row, -according to the db-
+# *before* the change happens. This should be an empty hashref in the
+# case of 'insert'
+has 'old_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
+
+# to_columns: The column changes specified -by the change- (specified by
+# the client/query). Note that this is different from 'new_columns' and
+# probably doesn't contain all the columns. This should be an empty
+# hashref in the case of 'delete'
+# (TODO: would 'change_columns' a better name than 'to_columns'?)
+has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
+
+# new_columns: The column values of the row, -according to the db-
+# *after* the change happens. This should be an empty hashref in the 
+# case of 'delete'
+has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
+
+## whether or not to fetch the row from storage again after the action
+## to identify changes
+#has 'new_columns_from_storage', is => 'ro', isa => Bool, default => sub{1};
+
 
 has 'allowed_actions', is => 'lazy', isa => ArrayRef;#, lazy_build => 1;
 sub _build_allowed_actions { [qw(insert update delete)] };
@@ -85,55 +103,8 @@ has 'change_ts', is => 'ro', isa => InstanceOf['DateTime'], lazy => 1, default =
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
 has 'change_elapsed', is => 'rw', default => sub{undef};
 
-has 'old_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
-has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
 
-
-#has 'Row', is => 'ro', required => 1;
-#
-#around 'Row' => sub {
-#	my $orig = shift;
-#	my $self = shift;
-#	return $self->recorded ? $self->newRow : $self->$orig(@_);
-#};
-#
-#
-#has 'origRow', is => 'ro', lazy => 1, default => sub {
-#	my $self = shift;
-#	$self->enforce_unexecuted;
-#	return $self->Row->in_storage ? $self->Row->get_from_storage : $self->Row;
-#};
-#
-#has 'newRow', is => 'ro', lazy => 1, default => sub {
-#	my $self = shift;
-#	$self->enforce_executed;
-#	
-#	return $self->Row unless (
-#		$self->Row->in_storage and
-#		$self->new_columns_from_storage and
-#		$self->action ne 'select'
-#	);
-#	return $self->Row->get_from_storage;
-#};
-#
-#has 'old_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	return {} unless ($self->action ne 'select' && $self->origRow && $self->origRow->in_storage);
-#	return { $self->origRow->get_columns };
-#};
-#
-#has 'new_columns', is => 'ro', isa => 'HashRef', lazy => 1, default => sub {
-#	my $self = shift;
-#	return {} unless ($self->newRow && $self->newRow->in_storage);
-#	return { $self->newRow->get_columns };
-#};
-#
-#sub BUILD {
-#	my $self = shift;
-#	$self->origRow;
-#	$self->old_columns;
-#}
 
 
 
