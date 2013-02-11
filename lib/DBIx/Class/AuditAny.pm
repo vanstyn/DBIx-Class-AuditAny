@@ -462,7 +462,7 @@ sub _add_additional_row_methods {
 			action				=> 'select'
 		);
 		$ChangeContext->record;
-		$AuditObj->record_change($ChangeContext);
+		$AuditObj->record_changes($ChangeContext);
 		return $Row;
 	});
 	
@@ -520,22 +520,8 @@ sub finish_changeset {
 	return 1;
 }
 
-# this is being replaced with record_changes:
-sub record_change {
-	my $self = shift;
-	my $ChangeContext = shift;
-	unless ($self->active_changeset) {
-		$self->start_changeset;		
-		$self->auto_finish(1);
-	}
-	#die "Cannot record_change without an active changeset" unless ($self->active_changeset);
-	$self->active_changeset->add_changes($ChangeContext);
-	$self->finish_changeset if ($self->auto_finish);
-}
-
-
 sub record_changes {
-	my ($self, $ChangeContexts) = @_;
+	my ($self, @ChangeContexts) = @_;
 	
 	my $local_changeset = 0;
 	unless ($self->active_changeset) {
@@ -543,7 +529,7 @@ sub record_changes {
 		$local_changeset = 1;
 	}
 	
-	$self->active_changeset->add_changes($_) for (@$ChangeContexts);
+	$self->active_changeset->add_changes($_) for (@ChangeContexts);
 	
 	$self->finish_changeset if ($local_changeset);
 }
@@ -556,36 +542,6 @@ sub record_changes {
 # this clear/empty outside its *very* short lifespan, by regularly resetting it
 has '_current_change_group', is => 'rw', isa => ArrayRef[Object], default => sub{[]};
 # --
-
-# @inserts is expected as a list of hashrefs with these keys:
-# { 
-#   to_columns => $hashref
-# }
-#
-sub _start_inserts {
-	my ($self, $Source, @inserts) = @_;
-	
-	$self->_current_change_group([]); # just for good measure
-	
-	my $source_name = $Source->source_name;
-	my $action = 'insert';
-	my $func_name = $source_name . '::' . $action;
-	
-	return () unless ($self->tracked_action_functions->{$func_name});
-	
-	my @ChangeContexts = map {
-		$self->_new_change_context(
-			AuditObj				=> $self,
-			SourceContext		=> $self->tracked_sources->{$source_name},
-			ChangeSetContext	=> $self->active_changeset, # could be undef
-			action				=> $action,
-			to_columns			=> $_->{to_columns}
-		)
-	} @inserts;
-	
-	$self->_current_change_group(\@ChangeContexts);
-	return @ChangeContexts;
-}
 
 sub _start_changes {
 	my ($self, $Source, $action, @changes) = @_;
@@ -631,7 +587,7 @@ sub _validated_change_hash {
 
 sub _finish_current_change_group {
 	my $self = shift;
-	$self->record_changes($self->_current_change_group);
+	$self->record_changes(@{$self->_current_change_group || []});
 	$self->_current_change_group([]); #<-- critical to reset!
 }
 
@@ -647,98 +603,7 @@ sub _new_change_context {
 
 ## subs called from hooks in Storage (Role):
 
-sub _record_inserts {
-	my ($self, $Source, @inserts) = @_;
-	
-	my $source_name = $Source->source_name;
-	my $action = 'insert';
-	my $func_name = $source_name . '::' . $action;
-	
-	return unless ($self->tracked_action_functions->{$func_name});
-	
-	my $local_changeset = 0;
-	unless ($self->active_changeset) {
-		$self->start_changeset;
-		$local_changeset = 1;
-	}
-	
-	my $class = $self->change_context_class;
-	foreach my $row (@inserts) {
-		my $ChangeContext = $class->new(
-			AuditObj				=> $self,
-			SourceContext		=> $self->tracked_sources->{$source_name},
-			ChangeSetContext	=> $self->active_changeset,
-			action				=> $action
-		);
-		$ChangeContext->record($row);
-		$self->record_change($ChangeContext);
-	}
-	
-	$self->finish_changeset if ($local_changeset);
-}
 
-sub _record_updates {
-	my ($self, $Source, @updates) = @_;
-	
-	my $source_name = $Source->source_name;
-	my $action = 'update';
-	my $func_name = $source_name . '::' . $action;
-	
-	return unless ($self->tracked_action_functions->{$func_name});
-	
-	my $local_changeset = 0;
-	unless ($self->active_changeset) {
-		$self->start_changeset;
-		$local_changeset = 1;
-	}
-	
-	my $class = $self->change_context_class;
-	foreach my $update (@updates) {
-		my $ChangeContext = $class->new(
-			AuditObj				=> $self,
-			SourceContext		=> $self->tracked_sources->{$source_name},
-			ChangeSetContext	=> $self->active_changeset,
-			action				=> $action,
-			old_columns			=> $update->{old},
-			new_columns			=> $update->{new}
-		);
-		$ChangeContext->record;
-		$self->record_change($ChangeContext);
-	}
-	
-	$self->finish_changeset if ($local_changeset);
-}
-
-sub _record_deletes {
-	my ($self, $Source, @deletes) = @_;
-	
-	my $source_name = $Source->source_name;
-	my $action = 'delete';
-	my $func_name = $source_name . '::' . $action;
-	
-	return unless ($self->tracked_action_functions->{$func_name});
-	
-	my $local_changeset = 0;
-	unless ($self->active_changeset) {
-		$self->start_changeset;
-		$local_changeset = 1;
-	}
-	
-	my $class = $self->change_context_class;
-	foreach my $row (@deletes) {
-		my $ChangeContext = $class->new(
-			AuditObj				=> $self,
-			SourceContext		=> $self->tracked_sources->{$source_name},
-			ChangeSetContext	=> $self->active_changeset,
-			action				=> $action,
-			old_columns			=> $row,
-		);
-		$ChangeContext->record;
-		$self->record_change($ChangeContext);
-	}
-	
-	$self->finish_changeset if ($local_changeset);
-}
 
 1;
 

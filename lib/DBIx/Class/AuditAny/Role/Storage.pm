@@ -207,9 +207,22 @@ around 'delete' => sub {
 	# Get the current rows that are going to be deleted:
 	my $rows = $self->_get_raw_rows($Source,$cond);
 	
+	my @change_datam = map {{
+		old_columns => $_,
+	}} @$rows;
+	
 	###########################
 	# TODO: find cascade deletes here
 	###########################
+	
+	
+	# Start new change operation within each Auditor and get back
+	# all the created ChangeContexts from all auditors. Each auditor
+	# will keep track of its own changes temporarily in a "group":
+	my @ChangeContexts = map {
+		$_->_start_changes($Source, 'delete', @change_datam)
+	} $self->all_auditors;
+	
 	
 	# Do the actual deletes:
 	#############################################################
@@ -224,8 +237,11 @@ around 'delete' => sub {
 	# TODO: should we go back to the db to make sure the rows are
 	# now gone as expected?
 	
-	# Send the deletes to each attached Auditor:
-	$_->_record_deletes($Source,@$rows) for ($self->all_auditors);
+	$_->record for (@ChangeContexts);
+	
+	# Tell each auditor that we're done and to record the change group
+	# into the active changeset:
+	$_->_finish_current_change_group for ($self->all_auditors);
 	
 	return wantarray ? @ret : $ret[0];
 };
