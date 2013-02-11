@@ -30,36 +30,60 @@ sub all_auditors { @{(shift)->auditors} }
 sub auditor_count { scalar (shift)->all_auditors }
 sub add_auditor { push @{(shift)->auditors},(shift) }
 
-# TODO: wrap other txn methods
 
-##
-# TODO: proper handling for nested txn_do calls. Use scope guard
-around 'txn_do' => sub {
+before 'txn_begin' => sub {
+	my $self = shift;
+	$_->start_unless_changeset for ($self->all_auditors);
+};
+
+# txn_commit
+# Note that we're hooking into -before- txn_commit rather than
+# -after- which would conceptually make better sense. The reason
+# is that we provide for the ability for collectors that store
+# their change data within the same schema being tracked, which
+# means the stored data will end up being a part of the same 
+# transaction, thus hooking into after on the outermost commit
+# could cause deep recursion. 
+# TODO/FIXME: What about collectors that
+# *don't* do this, and an exception occuring within that final
+# commit??? It could possibly lead to recording a change that
+# didn't actually happen (i.e. was rolled back). I think the way
+# to handle this is for the collector to delare if it is storing
+# to the tracked schema or not, and handle each case differently
+before 'txn_commit' => sub {
+	my $self = shift;
+	
+	# Only finish in the outermost transaction
+	if($self->transaction_depth == 1) {
+		$_->finish_if_changeset for ($self->all_auditors);
+	}
+};
+
+around 'txn_rollback' => sub {
 	my ($orig, $self, @args) = @_;
 	
-	return $self->$orig(@args) unless ($self->auditor_count);
-	
-	my @ChangeSets = ();
-	foreach my $Auditor ($self->all_auditors) {
-		push @ChangeSets, $Auditor->start_changeset
-			unless ($Auditor->active_changeset);
-	};
-	
-	return $self->$orig(@args) unless (scalar(@ChangeSets) > 0);
-	
-	my $result;
+	my @ret;
+	my $want = wantarray;
 	try {
-		$result = $self->$orig(@args);
-		$_->finish for (@ChangeSets);
+		#############################################################
+		# ---  Call original - scalar/list/void context agnostic  ---
+		@ret = !defined $want ? do { $self->$orig(@args); undef }
+			: $want ? $self->$orig(@args)
+				: scalar $self->$orig(@args);
+		# --- 
+		#############################################################
 	}
 	catch {
 		my $err = shift;
-		# Clean up:
-		try{$_->AuditObj->clear_changeset} for (@ChangeSets);
-		# Re-throw:
+		$_->_exception_cleanup($err) for ($self->all_auditors);
 		die $err;
 	};
-	return $result;
+	
+	# Should never get here because txn_rollback throws an exception
+	# per-design. But, we still handle the case for good measure:
+	$_->_exception_cleanup('txn_rollback') for ($self->all_auditors);
+	
+	return $want ? @ret : $ret[0];
 };
 
 
@@ -77,13 +101,22 @@ around 'insert' => sub {
 		})
 	} $self->all_auditors;
 	
-	#############################################################
-	# ---  Call original - scalar/list/void context agnostic  ---
-	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
-		: wantarray ? $self->$orig(@args)
-			: scalar $self->$orig(@args);
-	# --- 
-	#############################################################
+	my @ret;
+	my $want = wantarray;
+	try {
+		#############################################################
+		# ---  Call original - scalar/list/void context agnostic  ---
+		@ret = !defined $want ? do { $self->$orig(@args); undef }
+			: $want ? $self->$orig(@args)
+				: scalar $self->$orig(@args);
+		# --- 
+		#############################################################
+	}
+	catch {
+		my $err = shift;
+		$_->_exception_cleanup($err) for ($self->all_auditors);
+		die $err;
+	};
 	
 	# Update each ChangeContext with the result data:
 	$_->record($ret[0]) for (@ChangeContexts);
@@ -92,7 +125,7 @@ around 'insert' => sub {
 	# into the active changeset:
 	$_->_finish_current_change_group for ($self->all_auditors);
 	
-	return wantarray ? @ret : $ret[0];
+	return $want ? @ret : $ret[0];
 };
 
 
@@ -117,15 +150,24 @@ around 'insert_bulk' => sub {
 	# TODO ....
 	#
 	
-	#############################################################
-	# ---  Call original - scalar/list/void context agnostic  ---
-	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
-		: wantarray ? $self->$orig(@args)
-			: scalar $self->$orig(@args);
-	# --- 
-	#############################################################
+	my @ret;
+	my $want = wantarray;
+	try {
+		#############################################################
+		# ---  Call original - scalar/list/void context agnostic  ---
+		@ret = !defined $want ? do { $self->$orig(@args); undef }
+			: $want ? $self->$orig(@args)
+				: scalar $self->$orig(@args);
+		# --- 
+		#############################################################
+	}
+	catch {
+		my $err = shift;
+		$_->_exception_cleanup($err) for ($self->all_auditors);
+		die $err;
+	};
 
-	return wantarray ? @ret : $ret[0];
+	return $want ? @ret : $ret[0];
 };
 
 
@@ -154,13 +196,22 @@ around 'update' => sub {
 	} $self->all_auditors;
 	
 	# Do the actual update:
-	#############################################################
-	# ---  Call original - scalar/list/void context agnostic  ---
-	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
-		: wantarray ? $self->$orig(@args)
-			: scalar $self->$orig(@args);
-	# --- 
-	#############################################################
+	my @ret;
+	my $want = wantarray;
+	try {
+		#############################################################
+		# ---  Call original - scalar/list/void context agnostic  ---
+		@ret = !defined $want ? do { $self->$orig(@args); undef }
+			: $want ? $self->$orig(@args)
+				: scalar $self->$orig(@args);
+		# --- 
+		#############################################################
+	}
+	catch {
+		my $err = shift;
+		$_->_exception_cleanup($err) for ($self->all_auditors);
+		die $err;
+	};
 	
 	# Get the primry keys, or all columns if there are none:
 	my @pri_cols = $Source->primary_columns;
@@ -197,7 +248,7 @@ around 'update' => sub {
 	# into the active changeset:
 	$_->_finish_current_change_group for ($self->all_auditors);
 	
-	return wantarray ? @ret : $ret[0];
+	return $want ? @ret : $ret[0];
 };
 
 around 'delete' => sub {
@@ -225,13 +276,22 @@ around 'delete' => sub {
 	
 	
 	# Do the actual deletes:
-	#############################################################
-	# ---  Call original - scalar/list/void context agnostic  ---
-	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
-		: wantarray ? $self->$orig(@args)
-			: scalar $self->$orig(@args);
-	# --- 
-	#############################################################
+	my @ret;
+	my $want = wantarray;
+	try {
+		#############################################################
+		# ---  Call original - scalar/list/void context agnostic  ---
+		@ret = !defined $want ? do { $self->$orig(@args); undef }
+			: $want ? $self->$orig(@args)
+				: scalar $self->$orig(@args);
+		# --- 
+		#############################################################
+	}
+	catch {
+		my $err = shift;
+		$_->_exception_cleanup($err) for ($self->all_auditors);
+		die $err;
+	};
 	
 	
 	# TODO: should we go back to the db to make sure the rows are
@@ -243,7 +303,7 @@ around 'delete' => sub {
 	# into the active changeset:
 	$_->_finish_current_change_group for ($self->all_auditors);
 	
-	return wantarray ? @ret : $ret[0];
+	return $want ? @ret : $ret[0];
 };
 
 # (logic adapted from DBIx::Class::Storage::DBI::insert)

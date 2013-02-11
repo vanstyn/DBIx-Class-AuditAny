@@ -18,6 +18,8 @@ use DBIx::Class::AuditAny::Util;
 use DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 use DBIx::Class::AuditAny::Role::Schema;
 
+use Term::ANSIColor qw(:constants);
+
 has 'time_zone', is => 'ro', isa => Str, default => sub{'local'};
 sub get_dt { DateTime->now( time_zone => (shift)->time_zone ) }
 
@@ -269,11 +271,7 @@ sub _init_apply_schema_class {
 
 
 
-sub clear_changeset {
-	my $self = shift;
-	$self->active_changeset(undef);
-	$self->auto_finish(0);
-}
+
 
 sub _bind_schema {
 	my $self = shift;
@@ -489,7 +487,11 @@ sub _add_additional_row_methods {
 ##########
 ##########
 
-
+# Starts a new changeset if there isn't one active:
+sub start_unless_changeset {
+	my $self = shift;
+	return $self->active_changeset ? undef : $self->start_changeset;
+}
 
 sub start_changeset {
 	my $self = shift;
@@ -500,9 +502,23 @@ sub start_changeset {
 	return $self->active_changeset;
 }
 
+sub finish_if_changeset {
+	my $self = shift;
+	
+	#scream_color(CYAN,'   active_changeset: ' . ($self->active_changeset ? 1 : 0));
+	
+	return $self->active_changeset ? $self->finish_changeset : undef;
+}
+
+has '_finishing_changeset', is => 'rw', isa => Bool, default => sub{0};
 sub finish_changeset {
 	my $self = shift;
 	die "Cannot finish_changeset because there isn't one active" unless ($self->active_changeset);
+	
+	# Protect against deep recursion. This is needed for cases where the collector
+	# is writing to tables within the tracked schema
+	return if ($self->_finishing_changeset);
+	$self->_finishing_changeset(1);
 	
 	unless($self->record_empty_changes) {
 		my $count_cols = 0;
@@ -520,14 +536,24 @@ sub finish_changeset {
 	return 1;
 }
 
+sub _exception_cleanup {
+	my $self = shift;
+	my $err = shift;
+	$self->clear_changeset;
+	$self->_current_change_group([]);
+}
+
+sub clear_changeset {
+	my $self = shift;
+	$self->active_changeset(undef);
+	$self->auto_finish(0);
+	$self->_finishing_changeset(0);
+}
+
 sub record_changes {
 	my ($self, @ChangeContexts) = @_;
 	
-	my $local_changeset = 0;
-	unless ($self->active_changeset) {
-		$self->start_changeset;
-		$local_changeset = 1;
-	}
+	my $local_changeset = $self->start_unless_changeset;
 	
 	$self->active_changeset->add_changes($_) for (@ChangeContexts);
 	
