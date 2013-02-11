@@ -63,25 +63,6 @@ around 'txn_do' => sub {
 };
 
 
-## insert is the most simple. Always applies to exactly 1 row:
-#around 'insert' => sub {
-#	my ($orig, $self, @args) = @_;
-#	my ($Source, $to_insert) = @args;
-#	
-#	#############################################################
-#	# ---  Call original - scalar/list/void context agnostic  ---
-#	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
-#		: wantarray ? $self->$orig(@args)
-#			: scalar $self->$orig(@args);
-#	# --- 
-#	#############################################################
-#	
-#	# Send the insert to each attached Auditor:
-#	$_->_record_inserts($Source,$ret[0]) for ($self->all_auditors);
-#	
-#	return wantarray ? @ret : $ret[0];
-#};
-
 # insert is the most simple. Always applies to exactly 1 row:
 around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
@@ -90,8 +71,10 @@ around 'insert' => sub {
 	# Start new insert operation within each Auditor and get back
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
-	my @ChangeContexts = map {
-		$_->_start_inserts($Source,{ to_columns => $to_insert })
+	my @ChangeContexts = map { 
+		$_->_start_changes($Source, 'insert',{
+			to_columns => $to_insert 
+		})
 	} $self->all_auditors;
 	
 	#############################################################
@@ -146,20 +129,31 @@ around 'insert_bulk' => sub {
 };
 
 
-
-
 around 'update' => sub {
 	my ($orig, $self, @args) = @_;
 	my ($Source,$change,$cond) = @args;
 	
-	# 1. Get the current rows that are going to be updated:
+	# Get the current rows that are going to be updated:
 	my $rows = $self->_get_raw_rows($Source,$cond);
+	
+	my @change_datam = map {{
+		old_columns => $_,
+		to_columns => $change
+	}} @$rows;
 	
 	# (A.) ##########################
 	# TODO: find cascade updates here
 	#################################
 	
-	# 2. Do the actual update:
+	
+	# Start new change operation within each Auditor and get back
+	# all the created ChangeContexts from all auditors. The auditors
+	# will keep track of their own changes temporarily in a "group":
+	my @ChangeContexts = map {
+		$_->_start_changes($Source, 'update', @change_datam)
+	} $self->all_auditors;
+	
+	# Do the actual update:
 	#############################################################
 	# ---  Call original - scalar/list/void context agnostic  ---
 	my @ret = !defined wantarray ? do { $self->$orig(@args); undef }
@@ -173,11 +167,13 @@ around 'update' => sub {
 	@pri_cols = $Source->columns unless (scalar @pri_cols > 0);
 	
 	# -----
-	# 3. Fetch the new values for -each- row, independently. 
+	# Fetch the new values for -each- row, independently. 
 	# Build a condition specific to this row and fetch it, 
-	# taking into account the change that was just made:
-	my @updates = ();
-	foreach my $old (@$rows) {
+	# taking into account the change that was just made, and
+	# then record the new columns in the ChangeContext:
+	foreach my $ChangeContext (@ChangeContexts) {
+		my $old = $ChangeContext->{old_columns};
+		
 		my $new_rows = $self->_get_raw_rows($Source,{ map {
 			$_ => (exists $change->{$_} ? $change->{$_} : $old->{$_})
 		} @pri_cols });
@@ -188,19 +184,18 @@ around 'update' => sub {
 			unless (scalar @$new_rows == 1);
 			
 		my $new = pop @$new_rows;
-		push @updates, { 
-			old => $old, 
-			new => $new 
-		};
+		$ChangeContext->record($new);
 	}
 	# -----
+	
 	
 	# (B.) ##########################
 	# TODO: re-fetch rows that were updated via cascade here
 	#################################
 	
-	# Send the updates to each attached Auditor:
-	$_->_record_updates($Source,@updates) for ($self->all_auditors);
+	# Tell each auditor that we're done and to record the change group
+	# into the active changeset:
+	$_->_finish_current_change_group for ($self->all_auditors);
 	
 	return wantarray ? @ret : $ret[0];
 };

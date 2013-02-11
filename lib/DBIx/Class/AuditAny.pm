@@ -587,6 +587,48 @@ sub _start_inserts {
 	return @ChangeContexts;
 }
 
+sub _start_changes {
+	my ($self, $Source, $action, @changes) = @_;
+	
+	$self->_current_change_group([]); # just for good measure
+	
+	my $source_name = $Source->source_name;
+	my $func_name = $source_name . '::' . $action;
+	
+	return () unless ($self->tracked_action_functions->{$func_name});
+	
+	my @ChangeContexts = map {
+		$self->_new_change_context(
+			AuditObj				=> $self,
+			SourceContext		=> $self->tracked_sources->{$source_name},
+			ChangeSetContext	=> $self->active_changeset, # could be undef
+			action				=> $action,
+			$self->_validated_change_hash($_)
+		)
+	} @changes;
+	
+	$self->_current_change_group(\@ChangeContexts);
+	return @ChangeContexts;
+}
+
+sub _validated_change_hash {
+	my ($self, $data) = @_;
+	
+	require Data::Dumper::Concise;
+	
+	die "change data must be a HashRef:\n" . 
+		Data::Dumper::Concise::Dumper($data) unless (ref($data) eq 'HASH');
+	
+	my %allowed_keys = map {$_=>1} qw(old_columns to_columns new_columns);
+	
+	$allowed_keys{$_} && ref($data->{$_}) eq 'HASH' or 
+		die "Bad data in change hash:\n" . Data::Dumper::Concise::Dumper($data)
+			for (keys %$data);
+
+	return %$data;
+}
+
+
 sub _finish_current_change_group {
 	my $self = shift;
 	$self->record_changes($self->_current_change_group);
