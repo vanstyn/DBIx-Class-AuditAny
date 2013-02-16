@@ -96,7 +96,7 @@ around 'insert' => sub {
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
 	my @ChangeContexts = map { 
-		$_->_start_changes($Source, 'insert',{
+		$_->_start_current_change_group($Source, 'insert',{
 			to_columns => $to_insert 
 		})
 	} $self->all_auditors;
@@ -192,7 +192,7 @@ around 'update' => sub {
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
 	my @ChangeContexts = map {
-		$_->_start_changes($Source, 'update', @change_datam)
+		$_->_start_current_change_group($Source, 'update', @change_datam)
 	} $self->all_auditors;
 	
 	# Do the actual update:
@@ -271,7 +271,7 @@ around 'delete' => sub {
 	# all the created ChangeContexts from all auditors. Each auditor
 	# will keep track of its own changes temporarily in a "group":
 	my @ChangeContexts = map {
-		$_->_start_changes($Source, 'delete', @change_datam)
+		$_->_start_current_change_group($Source, 'delete', @change_datam)
 	} $self->all_auditors;
 	
 	

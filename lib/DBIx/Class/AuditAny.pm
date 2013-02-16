@@ -120,7 +120,7 @@ sub track {
 		die "'collect' cannot be used with 'collector_params', 'collector_class' or 'collector'"
 			if ($opts{collector_params} || $opts{collector_class} || $opts{collector});
 			
-		$opts{collector_class} = 'Collector';
+		$opts{collector_class} = 'Collector::Code';
 		$opts{collector_params} = { collect_coderef => $collect };
 	}
 	
@@ -330,7 +330,9 @@ sub track_all_sources {
 	return $self->track_sources(grep { !$excl{$_} } $self->schema->sources);
 }
 
-
+# This is the original, Row-based solution for initializing existing data. This
+# is going to be refactored and replaced, but with what has not been decided yet
+# See also _add_additional_row_methods() below
 sub init_sources {
 	my ($self,@sources) = @_;
 	
@@ -380,31 +382,6 @@ sub _add_row_trackers_methods {
 	$self->_add_additional_row_methods($result_class);
 }
 
-# -- TEMP: bridges for converting away from Row objects
-sub _get_old_columns {
-	my $self = shift;
-	my $Row = $self->_to_origRow(shift);
-	return {} unless ($Row && $Row->in_storage);
-	return { $Row->get_columns };
-}
-sub _get_new_columns {
-	my $self = shift;
-	my $Row = $self->_to_newRow(shift);
-	return {} unless ($Row && $Row->in_storage);
-	return { $Row->get_columns };
-}
-sub _to_origRow {
-	my $self = shift;
-	my $Row = shift;
-	return $Row->in_storage ? $Row->get_from_storage : $Row;
-}
-sub _to_newRow {
-	my $self = shift;
-	my $Row = shift;
-	return $Row unless ($Row->in_storage);
-	return $Row->get_from_storage;
-}
-# --
 
 
 # TODO/FIXME: This needs to be refactored to use a cleaner API. Probably 
@@ -504,9 +481,6 @@ sub start_changeset {
 
 sub finish_if_changeset {
 	my $self = shift;
-	
-	#scream_color(CYAN,'   active_changeset: ' . ($self->active_changeset ? 1 : 0));
-	
 	return $self->active_changeset ? $self->finish_changeset : undef;
 }
 
@@ -530,8 +504,11 @@ sub finish_changeset {
 		}
 	}
 	
+	#####
 	$self->collector->record_changes($self->active_changeset);
-
+	#####
+	
+	
 	$self->clear_changeset;
 	return 1;
 }
@@ -569,7 +546,7 @@ sub record_changes {
 has '_current_change_group', is => 'rw', isa => ArrayRef[Object], default => sub{[]};
 # --
 
-sub _start_changes {
+sub _start_current_change_group {
 	my ($self, $Source, $action, @changes) = @_;
 	
 	$self->_current_change_group([]); # just for good measure
@@ -623,11 +600,6 @@ sub _new_change_context {
 	my $class = $self->change_context_class;
 	return $class->new(@_);
 }
-
-
-
-
-## subs called from hooks in Storage (Role):
 
 
 

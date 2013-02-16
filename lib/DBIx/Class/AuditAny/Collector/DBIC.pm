@@ -7,7 +7,7 @@ use warnings;
 
 use Moo;
 use MooX::Types::MooseLike::Base qw(:all);
-extends 'DBIx::Class::AuditAny::Collector';
+with 'DBIx::Class::AuditAny::Role::Collector';
 
 #use Moose;
 #use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
