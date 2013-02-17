@@ -21,13 +21,19 @@ use DBICx::TestDatabase 0.04;
 has 'test_schema_class', is => 'ro', isa => 'Str', required => 1;
 has 'track_params', is => 'ro', isa => 'HashRef', required => 1;
 
+sub new_test_schema {
+	my $self = shift;
+	my $schema_class = shift;
+	return DBICx::TestDatabase->new($schema_class);
+}
+
 has 'Schema' => (
 	is => 'ro', isa => 'Object', lazy => 1, 
 	clearer => 'reset_Schema',
 	default => sub {
 		my $self = shift;
 		ok(
-			my $schema = DBICx::TestDatabase->new($self->test_schema_class),
+			my $schema = $self->new_test_schema($self->test_schema_class),
 			"Initialize Test Database"
 		);
 		return $schema;
