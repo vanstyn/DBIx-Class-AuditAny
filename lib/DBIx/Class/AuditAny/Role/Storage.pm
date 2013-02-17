@@ -180,7 +180,8 @@ around 'update' => sub {
 	
 	my @change_datam = map {{
 		old_columns => $_,
-		to_columns => $change
+		to_columns => $change,
+		condition => $cond
 	}} @$rows;
 	
 	# (A.) ##########################
@@ -260,6 +261,7 @@ around 'delete' => sub {
 	
 	my @change_datam = map {{
 		old_columns => $_,
+		condition => $cond
 	}} @$rows;
 	
 	###########################

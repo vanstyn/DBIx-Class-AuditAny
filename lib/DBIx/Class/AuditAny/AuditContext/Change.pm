@@ -33,6 +33,9 @@ has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
 # case of 'delete'
 has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
+# condition: The condition associated with this change, applies to
+# 'update' and 'delete'
+has 'condition', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
 has 'recorded', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
 

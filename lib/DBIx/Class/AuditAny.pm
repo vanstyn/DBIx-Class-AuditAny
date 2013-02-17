@@ -590,7 +590,7 @@ sub _validated_change_hash {
 	die "change data must be a HashRef:\n" . 
 		Data::Dumper::Concise::Dumper($data) unless (ref($data) eq 'HASH');
 	
-	my %allowed_keys = map {$_=>1} qw(old_columns to_columns new_columns);
+	my %allowed_keys = map {$_=>1} qw(old_columns to_columns new_columns condition);
 	
 	$allowed_keys{$_} && ref($data->{$_}) eq 'HASH' or 
 		die "Bad data in change hash:\n" . Data::Dumper::Concise::Dumper($data)
