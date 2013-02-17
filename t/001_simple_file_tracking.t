@@ -18,6 +18,9 @@ run_tests('Tracking to a file' => 'Routine::One' => {
 		track_immutable => 1,
 		track_all_sources => 1,
 		collect => sub {
+			# Notice this simple collector is *not* pulling any data via
+			# datapoints. Datapoints are optional sugar that are only
+			# pulled when called from a -Collector-
 			my $ChangeSet = shift;
 			open LOG, ">> $log" or die $!;
 			print LOG join("\t",

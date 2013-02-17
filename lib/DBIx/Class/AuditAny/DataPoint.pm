@@ -9,7 +9,23 @@ use warnings;
 # of the datapoint. It is used to get the value, but the value itself
 # is not stored within this object. Datapoint values are stored within 
 # the Context objects whose life-cycle is limited to individual tracked 
-# database operations
+# database operations, and -only- after being called from the Collector.
+#
+# Datapoints are just only optional sugar for abstracting and simplifying
+# useful collection of data as key/values. It just provides a nice way to
+# organize data that has already been retrieved. They are *never* automatically
+# calculated; only made available to the Collector. Note that this means
+# datapoint values are only retrieved -after- the database operation is completed,
+# and thus only have access to the data that has already been collected (or is
+# otherwise available to) the given Context object. I thought long and hard
+# about this design... At one point I was going to expand the paradigm to
+# provide 'pre' vs 'post' hooks, but ultimately decided that this would be
+# overkill and over-complicate things. To accomplish custom collection of 
+# data at the 'pre' stage (i.e. *before* the tracked database operation is
+# executed) a custom Context object should be written. This could then of 
+# course be paired with a custom datapoint config to access this extra data
+# in the custom Context, but that is incidental (i.e. just organizing the data
+# after the actual work to collect it)
 
 
 use Moo;
@@ -22,19 +38,16 @@ has 'AuditObj', is => 'ro', isa => InstanceOf['DBIx::Class::AuditAny'], required
 # The unique name of the DataPoint (i.e. 'key')
 has 'name', is => 'ro', isa => Str, required => 1;
 
-# The name of the -context-; determines at what point the value 
-# should be computed and collected, and into which Context -object-
-# it will be stored
+# The name of the -context- which determines at what point the value 
+# can be computed and collected, and into which Context -object- it
+# will be cached (although, since Context objects overlay in a hierarchy,
+# lower-level contexts can automatically access the datapoint values of the 
+# higher-level contexts (i.e. 'set' datapoints are implied in 'change'
+# context but not 'column' datapoints. This is just standard belongs_to vs
+# has_many logic based on the way contexts are interrelated, regardless of
+# how or if they are actually stored)
 has 'context', is => 'ro', required => 1,
  isa => Enum[qw(base source set change column)];
-
-# Additional classification used with context to determine when to
-# collect the value for a datapoint. Either 'pre' or 'post' to denote
-# collection before or after the wrapped database operation. Logically, 
-# there are stage*context possible collection points, although stage 
-# isn't considered for contexts where it doesn't apply, like in 'base' 
-# and 'source'
-has 'stage', is => 'ro', isa => Enum[qw(pre post)], default => sub{'post'};
 
 # method is what is called to get the value of the datapoint. It is a 
 # CodeRef and is supplied the Context object (ChangeSet, Change, Column, etc)
