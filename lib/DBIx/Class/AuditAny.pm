@@ -504,6 +504,8 @@ sub finish_changeset {
 		}
 	}
 	
+	$self->active_changeset->finish;
+	
 	#####
 	$self->collector->record_changes($self->active_changeset);
 	#####
@@ -537,6 +539,17 @@ sub record_changes {
 	$self->finish_changeset if ($local_changeset);
 }
 
+
+## Change 'group' vs Change 'set'
+#
+# I am using the term 'group' (to distinguish from 'set') to represent a group
+# of changes (rows) that are being changed within a single query/sql statement.
+# (vs. set which is any number of query/sql statements grouped in a transaction)
+# This should only happen from making changes via ResultSet objects instead of
+# Row objects, and in these cases we normalize these into individual (row) changes
+# TODO: should ChangeGroup be made into a 6th Context? For now, I think no because
+# it is overkill.
+##
 
 # -- This is a glorified tmp variable used just to allow groups of changes
 # to be associated with the correct auditor. TODO: This is probably a 

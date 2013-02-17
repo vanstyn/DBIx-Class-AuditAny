@@ -44,6 +44,9 @@ sub all_column_changes { map { $_->all_column_changes } (shift)->all_changes }
 
 sub add_changes {
 	my ($self, @ChangeContexts) = @_;
+	
+	die "Cannot add_changes to finished ChangeSet!" if ($self->finished);
+	
 	foreach my $ChangeContext (@ChangeContexts) {
 	
 		# New: It is now possible that there is no attached ChangeSet yet, since ChangeContext
@@ -64,13 +67,6 @@ sub add_changes {
 
 
 sub finish {
-	my $self = shift;
-	die "Not active changeset" unless ($self == $self->AuditObj->active_changeset);
-	$self->AuditObj->finish_changeset;
-	return $self->mark_finished;
-}
-
-sub mark_finished {
 	my $self = shift;
 	return if ($self->finished);
 	

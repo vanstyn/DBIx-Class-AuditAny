@@ -179,8 +179,6 @@ sub record_changes {
 	my $self = shift;
 	my $ChangeSet = shift;
 	
-	$ChangeSet->mark_finished; #<-- only for good measure
-	
 	return $self->add_changeset_row($ChangeSet) if ($self->changesetSource);
 	my @Changes = $ChangeSet->all_changes;
 	$self->add_change_row($_) for (@Changes);
