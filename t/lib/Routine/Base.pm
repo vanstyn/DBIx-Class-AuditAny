@@ -9,23 +9,35 @@ use Test::Routine;
 #  1. initializing a test database
 #  2. attaching an auditor to it
 #
-# Subsequent Routines should then:
+# Expects to be used with additional Routines having tests that:
 #  3. make some db changes
 #  4. interrogate those changes in the collector
 
 use Test::More; 
 use namespace::autoclean;
 
-use DBICx::TestDatabase 0.04;
+use Module::Runtime;
 
 has 'test_schema_class', is => 'ro', isa => 'Str', required => 1;
 has 'track_params', is => 'ro', isa => 'HashRef', required => 1;
 
+has 'test_schema_dsn', is => 'ro', isa => 'Str', default => sub{'dbi:SQLite::memory:'};
+has 'test_schema_connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
+	return [ (shift)->test_schema_dsn, '', '', {
+		AutoCommit			=> 1,
+		on_connect_call	=> 'use_foreign_keys'
+	}];
+};
+
 sub new_test_schema {
 	my $self = shift;
-	my $schema_class = shift;
-	return DBICx::TestDatabase->new($schema_class);
+	my $class = shift;
+	Module::Runtime::require_module($class);
+	my $s = $class->connect(@{$self->test_schema_connect});
+	$s->deploy();
+	return $s;
 }
+
 
 has 'Schema' => (
 	is => 'ro', isa => 'Object', lazy => 1, 

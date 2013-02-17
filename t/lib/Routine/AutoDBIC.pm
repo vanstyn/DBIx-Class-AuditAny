@@ -5,9 +5,13 @@ use warnings;
 
 use Test::Routine;
 
-# This Role is expected to be composed with another role that already 
-# composes 'Routine::Base'
+# This Routine (Role) is expected to be composed over top of 'Routine::Base'
+# (or a role which composes 'Routine::Base'). Not composing here to keep things
+# simple and avoid attribute conflict
 #with 'Routine::Base';
+
+requires 'new_test_schema';
+requires 'build_Auditor';
 
 use Test::More; 
 use namespace::autoclean;
@@ -15,11 +19,14 @@ use namespace::autoclean;
 use String::Random;
 sub get_rand_string { String::Random->new->randregex('[0-9A-Z]{10}') }
 
-has 'auto_overwrite', is => 'ro', isa => 'Bool', default => 1;
+has 'auto_overwrite', is => 'ro', isa => 'Bool', default => sub{1};
+has 'auto_unlink', is => 'ro', isa => 'Bool', default => sub{1};
+has '_auto_gen_filename', is => 'rw', isa => 'Bool', init_arg => undef, default => sub{0};
 has 'sqlite_db', is => 'ro', isa => 'Str', lazy => 1, default => sub {
-	't/var/autodbic-' . get_rand_string . '.db';
+	my $self = shift;
+	$self->_auto_gen_filename(1);
+	return 't/var/autodbic-' . get_rand_string . '.db';
 };
-
 
 before 'build_Auditor' => sub {
 	my $self = shift;
@@ -37,6 +44,17 @@ before 'build_Auditor' => sub {
 		->{sqlite_db} ||= $self->sqlite_db;
 };
 
-
+sub DEMOLISH {
+	my $self = shift;
+	
+	# Remove the test sqlite file *only* if the name was auto generated,
+	# even if auto_unlink is set (conservative)
+	unlink $self->sqlite_db if (
+		-f $self->sqlite_db and
+		$self->auto_overwrite and
+		$self->auto_unlink and
+		$self->_auto_gen_filename
+	);
+}
 
 1;
