@@ -4,26 +4,17 @@
 
 use strict;
 use warnings;
-use Test::More;
-use DBICx::TestDatabase 0.04;
 use lib qw(t/lib);
-
-plan tests => 11;
-
-use_ok( 'DBIx::Class::AuditAny' );
-
-ok(
-	my $schema = DBICx::TestDatabase->new('TestSchema::One'),
-	"Initialize Test Database"
-);
+use Test::Routine::Util;
+use Test::More;
 
 mkdir('t/var') unless (-d 't/var');
 my $log = 't/var/log.txt';
 unlink $log if (-f $log);
 
-ok(
-	my $Auditor = DBIx::Class::AuditAny->track(
-		schema => $schema, 
+
+run_tests('Tracking to a file' => 'Routine::One' => {
+	track_params => { 
 		track_immutable => 1,
 		track_all_sources => 1,
 		collect => sub {
@@ -37,34 +28,12 @@ ok(
 			) . "\n" for ($ChangeSet->all_column_changes);
 			close LOG;
 		}
-	),
-	"Setup simple tracker configured to write to text file"
-);
+	}
+});
 
 
 
-ok( 
-	$schema->resultset('Contact')->create({
-		first => 'John', 
-		last => 'Smith' 
-	}),
-	"Insert a test row"
-);
 
-ok(
-	my $Row = $schema->resultset('Contact')->search_rs({ last => 'Smith' })->first,
-	"Find the test row"
-);
-
-ok(
-	$Row->update({ last => 'Doe' }),
-	"Update the test row"
-);
-
-ok(
-	$Row->delete,
-	"Delete the test row"
-);
 
 my $d = {};
 ok(open(LOG, "< $log"), "Open the log file for reading");
@@ -101,3 +70,6 @@ ok(
 	), 
 	"Log contains expected DELETE entries"
 );
+
+
+done_testing;
