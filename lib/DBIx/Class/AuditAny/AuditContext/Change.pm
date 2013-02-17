@@ -9,11 +9,6 @@ use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
 extends 'DBIx::Class::AuditAny::AuditContext';
 
-#use Moose;
-#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
-#use MooseX::AttributeShortcuts; # gives us: is => 'lazy' (see lazy_build)
-
-
 use Time::HiRes qw(gettimeofday tv_interval);
 use DBIx::Class::AuditAny::Util;
 
@@ -38,16 +33,9 @@ has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
 # case of 'delete'
 has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
-## whether or not to fetch the row from storage again after the action
-## to identify changes
-#has 'new_columns_from_storage', is => 'ro', isa => Bool, default => sub{1};
 
-
-#has 'allowed_actions', is => 'lazy', isa => ArrayRef;#, lazy_build => 1;
-#sub _build_allowed_actions { [qw(insert update delete)] };
-
-has 'executed', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
 has 'recorded', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
+
 
 sub class { (shift)->SourceContext->class }
 sub ResultSource { (shift)->SourceContext->ResultSource }
@@ -66,7 +54,7 @@ sub _build_tiedContexts {
 }
 sub _build_local_datapoint_data { 
 	my $self = shift;
-	$self->enforce_executed;
+	$self->enforce_recorded;
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('change') };
 }
 
@@ -74,7 +62,7 @@ sub _build_local_datapoint_data {
 
 has 'pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => sub { 
 	my $self = shift;
-	$self->enforce_executed;
+	$self->enforce_recorded;
 	
 	# TEMP: this is a bridge for converting away from needing Row objects...
 	my $merge_cols = { %{$self->old_columns}, %{$self->new_columns} };
@@ -96,7 +84,7 @@ has 'orig_pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => s
 
 has 'change_ts', is => 'ro', isa => InstanceOf['DateTime'], lazy => 1, default => sub {
 	my $self = shift;
-	$self->enforce_unexecuted;
+	$self->enforce_unrecorded;
 	return $self->get_dt;
 };
 
@@ -107,10 +95,9 @@ has 'change_elapsed', is => 'rw', default => sub{undef};
 sub record {
 	my $self = shift;
 	my $new_columns = shift;
-	$self->enforce_unexecuted;
+	$self->enforce_unrecorded;
 	$self->change_ts;
 	$self->change_elapsed(tv_interval($self->start_timeofday));
-	$self->executed(1);
 	
 	%{$self->new_columns} = %$new_columns if (
 		ref($new_columns) eq 'HASH' and
@@ -121,13 +108,8 @@ sub record {
 }
 
 
-has 'action_id_map', is => 'lazy', isa => HashRef[Str];#, lazy_build => 1;
-sub _build_action_id_map {{
-	insert => 1,
-	update => 2,
-	delete => 3
-}}
-
+# action_id exists so collectors can store the action as a shorter id
+# instead of the full name.
 sub action_id {
 	my $self = shift;
 	my $action = $self->action or return undef;
@@ -135,21 +117,28 @@ sub action_id {
 	return $id;
 }
 
+has 'action_id_map', is => 'ro', isa => HashRef[Int], default => sub {{
+	insert => 1,
+	update => 2,
+	delete => 3
+}};
 
-sub enforce_unexecuted {
+
+
+sub enforce_unrecorded {
 	my $self = shift;
-	die "Error: Audit action already executed!" if ($self->executed);
+	die "Error: Audit action already recorded!" if ($self->recorded);
 }
 
-sub enforce_executed {
+sub enforce_recorded {
 	my $self = shift;
-	die "Error: Audit action not executed yet!" unless ($self->executed);
+	die "Error: Audit action not recorded yet!" unless ($self->recorded);
 }
 
 
 has 'column_changes', is => 'ro', isa => HashRef[Object], lazy => 1, default => sub {
 	my $self = shift;
-	$self->enforce_executed;
+	$self->enforce_recorded;
 	
 	my $old = $self->old_columns;
 	my $new = $self->new_columns;

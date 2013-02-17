@@ -510,7 +510,6 @@ sub finish_changeset {
 	$self->collector->record_changes($self->active_changeset);
 	#####
 	
-	
 	$self->clear_changeset;
 	return 1;
 }

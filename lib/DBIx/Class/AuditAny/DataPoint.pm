@@ -36,7 +36,10 @@ use Switch qw(switch);
 has 'AuditObj', is => 'ro', isa => InstanceOf['DBIx::Class::AuditAny'], required => 1;
 
 # The unique name of the DataPoint (i.e. 'key')
-has 'name', is => 'ro', isa => Str, required => 1;
+has 'name', is => 'ro', required => 1, isa => sub {
+	$_[0] =~ /^[a-z0-9\_\-]+$/ or die "'$_[0]' is invalid - " .
+		"only lowercase letters, numbers, underscore(_) and dash(-) allowed";
+};
 
 # The name of the -context- which determines at what point the value 
 # can be computed and collected, and into which Context -object- it
@@ -72,17 +75,6 @@ has 'column_info', is => 'ro', isa => HashRef, lazy => 1,
 has 'get_column_info', is => 'ro', isa => CodeRef, lazy => 1,
  default => sub {{ data_type => "varchar" }};
 # --
-
-sub BUILD {
-	my $self = shift;
-	
-	my @contexts = qw(base source set change column);
-	die "Bad data point context '" . $self->context . "' - allowed values: " . join(',',@contexts)
-		unless ($self->context ~~ @contexts);
-		
-	die "Bad datapoint name '" . $self->name . "' - only lowercase letters, numbers, underscore(_) and dash(-) allowed" 
-		unless ($self->name =~ /^[a-z0-9\_\-]+$/);
-}
 
 sub get_value {
 	my $self = shift;
