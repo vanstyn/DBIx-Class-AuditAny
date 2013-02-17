@@ -8,8 +8,6 @@ use Test::More;
 use Test::Routine::Util;
 use lib qw(t/lib);
 
-$| = 1;
-
 run_tests(
 	'Tracking to custom tables via DBIC collector', 
 	'Routine::One::ToCustTables'

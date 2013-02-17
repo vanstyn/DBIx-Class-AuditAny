@@ -43,25 +43,29 @@ has 'Schema' => (
 has 'Auditor' => (
 	is => 'ro', lazy => 1, 
 	clearer => 'reset_Auditor',
-	default => sub {
-		my $self = shift;
-		
-		use_ok( 'DBIx::Class::AuditAny' );
-		
-		$self->reset_Schema;
-		
-		my %params = (
-			%{$self->track_params},
-			schema => $self->Schema
-		);
-		
-		ok(
-			my $Auditor = DBIx::Class::AuditAny->track(%params),
-			"Initialize Auditor"
-		);
-		return $Auditor;
-	}
+	builder => 'build_Auditor'
 );
+
+sub build_Auditor {
+	my $self = shift;
+	
+	use_ok( 'DBIx::Class::AuditAny' );
+	
+	$self->reset_Schema;
+	
+	my %params = (
+		%{$self->track_params},
+		schema => $self->Schema
+	);
+	
+	ok(
+		my $Auditor = DBIx::Class::AuditAny->track(%params),
+		"Initialize Auditor"
+	);
+	return $Auditor;
+}
+
+
 
 test 'init_schema_auditor' => { desc => 'Init test schema and auditor' } => sub {
 	my $self = shift;

@@ -5,101 +5,24 @@
 use strict;
 use warnings;
 use Test::More;
-use DBICx::TestDatabase 0.04;
+use Test::Routine::Util;
 use lib qw(t/lib);
 
-plan tests => 12;
 
-use_ok( 'DBIx::Class::AuditAny' );
-
-ok(
-	my $schema = DBICx::TestDatabase->new('TestSchema::One'),
-	"Initialize Test Database"
-);
-
-
-ok(
-	my $Auditor = DBIx::Class::AuditAny->track(
-		schema => $schema, 
-		track_all_sources => 1,
-		collector_class => 'Collector::AutoDBIC',
-		collector_params => {
-			sqlite_db => 't/var/audit2.db',
+run_tests(
+	'Tracking to custom tables via AutoDBIC collector (with defaults)', 
+	'Routine::One::ToAutoDBIC' => {
+		# override track_params so it uses defaults
+		track_params => {
+			track_all_sources => 1,
 		},
-	),
-	"Setup tracker configured to write to auto configured schema"
+		# These are actually the defaults
+		colnames => {
+			old		=> 'old_value',
+			new		=> 'new_value',
+			column	=> 'column_name'
+		}
+	}
 );
 
-
-ok( 
-	$schema->resultset('Contact')->create({
-		first => 'John', 
-		last => 'Smith' 
-	}),
-	"Insert a test row"
-);
-
-ok(
-	my $Row = $schema->resultset('Contact')->search_rs({ last => 'Smith' })->first,
-	"Find the test row"
-);
-
-ok(
-	$Row->update({ last => 'Doe' }),
-	"Update the test row"
-);
-
-ok(
-	$Row->delete,
-	"Delete the test row"
-);
-
-ok(
-	my $audit_schema = $Auditor->collector->target_schema,
-	"Get the active Collector schema object"
-);
-
-
-is(
-	$audit_schema->resultset('AuditChangeSet')->count => 3,
-	"Expected number of ChangeSets"
-);
-
-
-is(
-	$audit_schema->resultset('AuditChangeColumn')->search_rs({
-		old_value => undef,
-		new_value => 'Smith',
-		column_name => 'last',
-		'change.action' => 'insert'
-	},{
-		join => { change => 'changeset' }
-	})->count => 1,
-	"Expected specific INSERT column change record exists"
-);
-
-
-is(
-	$audit_schema->resultset('AuditChangeColumn')->search_rs({
-		old_value => 'Smith',
-		new_value => 'Doe',
-		column_name => 'last',
-		'change.action' => 'update',
-	},{
-		join => { change => 'changeset' }
-	})->count => 1,
-	"Expected specific UPDATE column change record exists"
-);
-
-
-is(
-	$audit_schema->resultset('AuditChangeColumn')->search_rs({
-		old_value => 'Doe',
-		new_value => undef,
-		column_name => 'last',
-		'change.action' => 'delete'
-	},{
-		join => { change => 'changeset' }
-	})->count => 1,
-	"Expected specific DELETE column change record exists"
-);
+done_testing;
