@@ -176,7 +176,7 @@ around 'update' => sub {
 	my ($Source,$change,$cond) = @args;
 	
 	# Get the current rows that are going to be updated:
-	my $rows = $self->_get_raw_rows($Source,$cond);
+	my $rows = get_raw_source_rows($Source,$cond);
 	
 	my @change_datam = map {{
 		old_columns => $_,
@@ -184,9 +184,32 @@ around 'update' => sub {
 		condition => $cond
 	}} @$rows;
 	
+	
+	
 	# (A.) ##########################
 	# TODO: find cascade updates here
 	#################################
+	
+	## IN PROGRESS.....
+	
+	# If any of these columns are being changed, we have to also watch the
+	# corresponding relationhips for changes (from cascades) during the
+	# course of the current database operation. This can be expensive, but
+	# we prefer accuracy over speed
+	my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
+	
+	# temp: just get all of themfor now
+	my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
+	
+	foreach my $rel (@rels) {
+		my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
+		#scream_color(CYAN.BOLD,$rel_rows);
+	}
+	
+	#scream($Source->source_name,$cascade_cols,\@rels);
+	
+	#
+	
 	
 	
 	# Start new change operation within each Auditor and get back
@@ -226,7 +249,7 @@ around 'update' => sub {
 	foreach my $ChangeContext (@ChangeContexts) {
 		my $old = $ChangeContext->{old_columns};
 		
-		my $new_rows = $self->_get_raw_rows($Source,{ map {
+		my $new_rows = get_raw_source_rows($Source,{ map {
 			$_ => (exists $change->{$_} ? $change->{$_} : $old->{$_})
 		} @pri_cols });
 		
@@ -257,7 +280,7 @@ around 'delete' => sub {
 	my ($Source, $cond) = @args;
 	
 	# Get the current rows that are going to be deleted:
-	my $rows = $self->_get_raw_rows($Source,$cond);
+	my $rows = get_raw_source_rows($Source,$cond);
 	
 	my @change_datam = map {{
 		old_columns => $_,
@@ -308,27 +331,61 @@ around 'delete' => sub {
 	return $want ? @ret : $ret[0];
 };
 
-# (logic adapted from DBIx::Class::Storage::DBI::insert)
-sub _get_raw_rows {
+
+
+# _get_cascading_rekey_cols: gets a map of column names to relationships. These
+# are the relationships that *could* be changed via a cascade when the column (fk)
+# is changed.
+# TODO: use 'cascade_rekey' attr from DBIx::Class::Shadow 
+#  (DBIx::Class::Relationship::Cascade::Rekey) ?
+sub _get_cascading_rekey_columns {
 	my $self = shift;
 	my $Source = shift;
+	
+	# cache for next time (should I even bother? since if rels are added to the ResultSource
+	# later this won't get updated? Is that a bigger risk than the performance boost?)
+	$self->_source_cascade_rekey_cols->{$Source->source_name} ||= do {
+		my $rels = { map { $_ => $Source->relationship_info($_) } $Source->relationships };
+		
+		my $cascade_cols = {};
+		foreach my $rel (keys %$rels) {
+			# Only multi rels apply:
+			next unless ($rels->{$rel}{attrs}{accessor} eq 'multi');
+			
+			# Get all the local columns that effect (i.e. might cascade to) this relationship:
+			my @cols = $self->parse_cond_cols_by_alias($rels->{$rel}{cond},'self');
+			
+			# Add the relationship to list for each column.
+			#$cascade_cols->{$_} ||= [] for (@cols); #<-- don't need this
+			push @{$cascade_cols->{$_}}, $rel for (@cols);
+		}
+	
+		return $cascade_cols;
+	};
+	
+	return $self->_source_cascade_rekey_rels->{$Source->source_name};
+}
+
+has '_source_cascade_rekey_cols', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
+
+sub parse_cond_cols_by_alias {
+	my $self = shift;
 	my $cond = shift;
-
-	my @rows = ();
-	my @cols = $Source->columns;
+	my $alias = shift;
 	
-	my $cur = DBIx::Class::ResultSet->new($Source, {
-		where => $cond,
-		select => \@cols,
-	})->cursor;
+	# Get the string elements (keys and values)
+	# (TODO: deep walk any hahs/array structure)
+	my @elements = %$cond;
 	
-	while(my @data = $cur->next) {
-		my %returned_cols = ();
-		@returned_cols{@cols} = @data;
-		push @rows, \%returned_cols;
-	}
-
-	return \@rows;
+	ref($_) and die "Complex conditions aren't supported yet" for (@elements);
+	
+	my @cols = map { $_->[1] } # <-- 3. just the column names
+		# 2. exclude all but the alias name we want
+		grep { $_->[0] eq $alias } 
+			# 1. Convert all the element strings into alias/column pairs
+			map { [split(/\./,$_,2)] } @elements;
+	
+	return @cols;
 }
 
 

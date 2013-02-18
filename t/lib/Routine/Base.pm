@@ -16,6 +16,7 @@ use Test::Routine;
 use Test::More; 
 use namespace::autoclean;
 
+use SQL::Translator 0.11016;
 use Module::Runtime;
 
 has 'test_schema_class', is => 'ro', isa => 'Str', required => 1;

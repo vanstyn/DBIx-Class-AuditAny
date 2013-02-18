@@ -13,7 +13,11 @@ require Module::Runtime;
 use Try::Tiny;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw(resolve_localclass package_exists try catch uniq);
+our @EXPORT = qw(
+ resolve_localclass package_exists try catch uniq
+ get_raw_source_rows
+ get_raw_source_related_rows
+);
 
 # debug util funcs
 push @EXPORT, qw(scream scream_color);
@@ -92,6 +96,57 @@ sub uniq {
 	# case of nested single element arrayrefs
 	@{$_[0]} = uniq(@{$_[0]},$_[0]->[0]);
 	return @{$_[0]};
+}
+
+
+# (logic adapted from DBIx::Class::Storage::DBI::insert)
+sub get_raw_source_rows {
+	my $Source = shift;
+	my $cond = shift;
+
+	my @rows = ();
+	my @cols = $Source->columns;
+	
+	my $cur = DBIx::Class::ResultSet->new($Source, {
+		where => $cond,
+		select => \@cols,
+	})->cursor;
+	
+	while(my @data = $cur->next) {
+		my %returned_cols = ();
+		@returned_cols{@cols} = @data;
+		push @rows, \%returned_cols;
+	}
+
+	return \@rows;
+}
+
+sub get_raw_source_related_rows {
+	my $Source = shift;
+	my $rel = shift;
+	my $cond = shift;
+	
+	my $RelSource = $Source->related_source($rel) 
+		or die "Bad relationship name '$rel'";
+	
+	my $Rs = DBIx::Class::ResultSet->new($Source, {
+		where => $cond
+	})->as_subselect_rs; #<-- need to wrap in subselect to prevent possible ambiguous col errs
+	
+	my @rows = ();
+	my @cols = $RelSource->columns;
+	
+	my $cur = $Rs->search_related_rs($rel,undef,{
+		select => \@cols,
+	})->cursor;
+	
+	while(my @data = $cur->next) {
+		my %returned_cols = ();
+		@returned_cols{@cols} = @data;
+		push @rows, \%returned_cols;
+	}
+
+	return \@rows;
 }
 
 
