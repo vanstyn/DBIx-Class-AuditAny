@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Test::Routine;
-with 'Routine::Sakila','Routine::AutoDBIC';
+with 'Routine::Sakila','Routine::AuditAny','Routine::AutoDBIC';
 
 use Test::More; 
 use namespace::autoclean;

@@ -13,7 +13,14 @@ my $log = 't/var/log.txt';
 unlink $log if (-f $log);
 
 
-run_tests('Tracking to a file' => 'Routine::One' => {
+{
+	package FileRoutine;
+	use Moose;
+	with 'Routine::One', 'Routine::AuditAny';
+}
+
+
+run_tests('Tracking to a file' => 'FileRoutine' => {
 	track_params => { 
 		track_immutable => 1,
 		track_all_sources => 1,

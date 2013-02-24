@@ -5,13 +5,12 @@ use warnings;
 
 use Test::Routine;
 
-# This Routine (Role) is expected to be composed over top of 'Routine::Base'
-# (or a role which composes 'Routine::Base'). Not composing here to keep things
+# This Routine (Role) is expected to be composed over top of 'Routine::AuditAny'
+# (or a role which composes it). Not composing here to keep things
 # simple and avoid attribute conflict
-#with 'Routine::Base';
+#with 'Routine::AuditAny';
 
-requires 'new_test_schema';
-requires 'build_Auditor';
+requires 'attach_Auditor';
 
 use Test::More; 
 use namespace::autoclean;
@@ -28,8 +27,10 @@ has 'sqlite_db', is => 'ro', isa => 'Str', lazy => 1, default => sub {
 	return 't/var/autodbic-' . get_rand_string . '.db';
 };
 
-before 'build_Auditor' => sub {
+before 'attach_Auditor' => sub {
 	my $self = shift;
+	
+	die "Auditor already defined!" if (defined $self->Auditor);
 	
 	unlink $self->sqlite_db if (
 		-f $self->sqlite_db and
@@ -43,6 +44,7 @@ before 'build_Auditor' => sub {
 	$self->track_params->{collector_params}
 		->{sqlite_db} ||= $self->sqlite_db;
 };
+
 
 sub DEMOLISH {
 	my $self = shift;

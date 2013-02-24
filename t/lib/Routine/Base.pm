@@ -5,13 +5,11 @@ use warnings;
 
 use Test::Routine;
 
-# This is the *base* routine for:
-#  1. initializing a test database
-#  2. attaching an auditor to it
-#
-# Expects to be used with additional Routines having tests that:
-#  3. make some db changes
-#  4. interrogate those changes in the collector
+# This is the *base* routine for initializing a test database
+# It is intended to be composed under additional Routines for
+# attaching auditors, running a script of changes and then
+# interrogating those changes in the collector
+
 
 use Test::More; 
 use namespace::autoclean;
@@ -20,7 +18,6 @@ use SQL::Translator 0.11016;
 use Module::Runtime;
 
 has 'test_schema_class', is => 'ro', isa => 'Str', required => 1;
-has 'track_params', is => 'ro', isa => 'HashRef', required => 1;
 
 has 'test_schema_dsn', is => 'ro', isa => 'Str', default => sub{'dbi:SQLite::memory:'};
 has 'test_schema_connect', is => 'ro', isa => 'ArrayRef', lazy => 1, default => sub {
@@ -43,47 +40,19 @@ sub new_test_schema {
 has 'Schema' => (
 	is => 'ro', isa => 'Object', lazy => 1, 
 	clearer => 'reset_Schema',
-	default => sub {
-		my $self = shift;
-		ok(
-			my $schema = $self->new_test_schema($self->test_schema_class),
-			"Initialize Test Database"
-		);
-		return $schema;
-	}
+	builder => 'build_Schema'
 );
 
-has 'Auditor' => (
-	is => 'ro', lazy => 1, 
-	clearer => 'reset_Auditor',
-	builder => 'build_Auditor'
-);
 
-sub build_Auditor {
+sub build_Schema {
 	my $self = shift;
-	
-	use_ok( 'DBIx::Class::AuditAny' );
-	
-	$self->reset_Schema;
-	
-	my %params = (
-		%{$self->track_params},
-		schema => $self->Schema
-	);
-	
 	ok(
-		my $Auditor = DBIx::Class::AuditAny->track(%params),
-		"Initialize Auditor"
+		my $schema = $self->new_test_schema($self->test_schema_class),
+		"Initialize Test Database"
 	);
-	return $Auditor;
+	return $schema;
 }
 
-
-
-test 'init_schema_auditor' => { desc => 'Init test schema and auditor' } => sub {
-	my $self = shift;
-	ok($self->Auditor,"Auditor Initialized");
-};
 
 
 1;

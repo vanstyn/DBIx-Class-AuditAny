@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Test::Routine;
-with 'Routine::One';
+with 'Routine::One','Routine::AuditAny';
 
 use Test::More; 
 use namespace::autoclean;
