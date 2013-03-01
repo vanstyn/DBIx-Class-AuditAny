@@ -14,7 +14,7 @@ unlink $db_audit_file if (-f $db_audit_file);
 
 run_tests(
 	"Tracking on the 'WackyRels' example db", 
-	'Routine::WackyRels' => {
+	'Routine::WackyRels::ToAutoDBIC' => {
 		test_schema_dsn => 'dbi:SQLite:dbname=' . $db_file,
 		sqlite_db => $db_audit_file
 	}

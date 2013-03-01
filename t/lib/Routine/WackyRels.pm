@@ -15,6 +15,19 @@ test 'inserts' => { desc => 'Insert Test Data' } => sub {
   my $self = shift;
   my $schema = $self->Schema;
   
+  $schema->txn_do(sub {
+    ok(
+      # Remove $ret to force VOID context (needed to test Storgae::insert_bulk codepath)
+      do { my $ret = $schema->resultset('Size')->populate([
+        [qw(name detail)],
+        ['big',"Largest Size"],
+        ['medium',"In-between"],
+        ['small',"Starbucks calls it 'Tall'"]
+      ]); 1; },
+      "Populate Some Size rows"
+    );
+  });
+  
   
   $schema->txn_do(sub {
     ok(
@@ -43,6 +56,21 @@ test 'inserts' => { desc => 'Insert Test Data' } => sub {
     );
   });
   
+  $schema->txn_do(sub {
+    ok(
+      # Remove $ret to force VOID context (needed to test Storgae::insert_bulk codepath)
+      do { my $ret = $schema->resultset('Product')->populate([
+        [qw(sku size info)],
+        ['33-456BL','big',"White plastic bowl"],
+        ['67GB','medium',"George Bush Tee-Shirt"],
+        ['UU-900','big',"Cell Phone o-ring"],
+        ['I3-W','big',"Widget for source-code incinerator"],
+        ['IPU-5000','small',"Puppy incinerator"],
+      ]); 1; },
+      "Populate Some Product rows"
+    );
+  });
+  
 };
 
 
@@ -60,7 +88,19 @@ test 'updates_cascades' => { desc => 'Updates causing db-side cascades' } => sub
   
   ok(
     $Parent->update({ color => 'red' }),
-    "Change the PK of the 'big-blue' Parent row row (should cascade)"
+    "Change the PK of the 'big-blue' Parent row (should cascade)"
+  );
+  
+  ok(
+    my $Size = $schema->resultset('Size')->search_rs({ 
+      name => 'big',
+    })->first,
+    "Find 'big' Size row"
+  );
+  
+  ok(
+    $Size->update({ name => 'venti' }),
+    "Change the PK of the 'big' Size row (should cascade + double-cascade [3 tables])"
   );
   
 };	
