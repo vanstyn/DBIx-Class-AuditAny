@@ -15,7 +15,7 @@ has 'track_params', is => 'ro', lazy => 1, default => sub {
 		track_all_sources => 1,
 		datapoints => [
 			(qw(schema schema_ver changeset_ts changeset_elapsed)),
-			(qw(change_elapsed action source pri_key_value)),
+			(qw(change_elapsed action source pri_key_value orig_pri_key_value)),
 			(qw(column_name old_value new_value)),
 		],
 		rename_datapoints => {

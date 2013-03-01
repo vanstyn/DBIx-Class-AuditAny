@@ -190,25 +190,35 @@ around 'update' => sub {
 	# TODO: find cascade updates here
 	#################################
 	
-	#### IN PROGRESS.....
-	##
-	### If any of these columns are being changed, we have to also watch the
-	### corresponding relationhips for changes (from cascades) during the
-	### course of the current database operation. This can be expensive, but
-	### we prefer accuracy over speed
-	##my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
-	##
-	### temp: just get all of themfor now
-	##my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
-	##
-	##foreach my $rel (@rels) {
-	##	my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
-	##	#scream_color(CYAN.BOLD,$rel_rows);
-	##}
-	##
-	###scream($Source->source_name,$cascade_cols,\@rels);
-	##
-	###
+	## IN PROGRESS.....
+	
+	# If any of these columns are being changed, we have to also watch the
+	# corresponding relationhips for changes (from cascades) during the
+	# course of the current database operation. This can be expensive, but
+	# we prefer accuracy over speed
+	my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
+	
+	# temp: just get all of themfor now
+	#  this should be limited to only rels associated with columns
+	#  being changed
+	my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
+	
+	foreach my $rel (@rels) {
+		my $rinfo = $Source->relationship_info($rel);
+		my $rrinfo = $Source->reverse_relationship_info($rel);
+		
+		my ($foreign) = $self->parse_cond_cols_by_alias($rinfo->{cond},'foreign');
+		
+		scream_color(GREEN,$foreign,$rinfo,$rrinfo);
+		
+		#my $foreign_col = 
+		my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
+		scream_color(CYAN.BOLD,$rel_rows);
+	}
+	
+	scream($Source->source_name,$cascade_cols,\@rels);
+	
+	#
 	
 	
 	
