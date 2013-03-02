@@ -171,8 +171,8 @@ around 'insert_bulk' => sub {
 };
 
 
-#has '_row_changes_group', is => 'rw', isa => ArrayRef[HashRef], lazy => 1, default => sub{[]};
-#sub _add_row_changes {push @{shift->_row_changes_group}, @_};
+has '_change_contexts', is => 'rw', isa => ArrayRef[Object], lazy => 1, default => sub {[]};
+sub _add_change_contexts { push @{shift->_change_contexts},@_ }
 
 sub _follow_row_changes($$) {
   my $self = shift;
@@ -188,24 +188,15 @@ sub _follow_row_changes($$) {
   my $want = $cnf->{want} || wantarray;
   my $rows = $cnf->{rows};
   my $nested = $cnf->{nested};
-	
-	#$self->_row_changes_group([]) unless ($nested);
   
   my $source_name = $Source->source_name;
+  
+  $self->_change_contexts([]) unless ($nested);
   
   # Get the current rows if they haven't been supplied and a
   # condition has ($cond):
   $rows = get_raw_source_rows($Source,$cond)
     if (!defined $rows && defined $cond);
-
-  #$self->_add_row_changes(
-  #  map {{
-  #    source_name => $source_name
-  #    old_columns => $_,
-  #    to_columns => $change,
-  #    condition => $cond
-  #  }} @$rows
-  #);
 
 	my @change_datam = map {{
 		old_columns => $_,
@@ -220,7 +211,7 @@ sub _follow_row_changes($$) {
 	#################################
 	
 	## IN PROGRESS.....
-	#
+	
   ## If any of these columns are being changed, we have to also watch the
   ## corresponding relationhips for changes (from cascades) during the
   ## course of the current database operation. This can be expensive, but
@@ -255,10 +246,12 @@ sub _follow_row_changes($$) {
 	# Start new change operation within each Auditor and get back
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
-	my @ChangeContexts = map {
-		$_->_start_current_change_group($Source, 0,$action, @change_datam)
-	} $self->all_auditors;
-	
+  $self->_add_change_contexts(
+    map {
+      $_->_start_current_change_group($Source, 0,$action, @change_datam)
+    } $self->all_auditors
+  );
+  
 	# Run the supplied method:
 	my @ret;
   if($orig) {
@@ -277,19 +270,44 @@ sub _follow_row_changes($$) {
       die $err;
     };
   }
+  
+  
 	
-	# Get the primry keys, or all columns if there are none:
-	my @pri_cols = $Source->primary_columns;
-	@pri_cols = $Source->columns unless (scalar @pri_cols > 0);
+
 	
+	# (B.) ##########################
+	# TODO: re-fetch rows that were updated via cascade here
+	#################################
+	
+	# Tell each auditor that we're done and to record the change group
+	# into the active changeset (unless the action we're following is nested):
+  unless ($nested) {
+    $self->_record_change_contexts;
+    $_->_finish_current_change_group for ($self->all_auditors);
+  }
+	
+	return $want ? @ret : $ret[0];
+}
+
+
+sub _record_change_contexts {
+  my $self = shift;
+  
 	# -----
 	# Fetch the new values for -each- row, independently. 
 	# Build a condition specific to this row and fetch it, 
 	# taking into account the change that was just made, and
 	# then record the new columns in the ChangeContext:
-	foreach my $ChangeContext (@ChangeContexts) {
-		my $old = $ChangeContext->{old_columns};
+	foreach my $ChangeContext (@{$self->_change_contexts}) {
+    my $Source = $ChangeContext->SourceContext->ResultSource;
+    # Get the primry keys, or all columns if there are none:
+    my @pri_cols = $Source->primary_columns;
+    @pri_cols = $Source->columns unless (scalar @pri_cols > 0);
+    
+    my $change = $ChangeContext->to_columns;
+    my $old = $ChangeContext->old_columns;
 		
+    # TODO: cache the new columns to prevent duplicate fetches for multiple auditors
 		my $new_rows = get_raw_source_rows($Source,{ map {
 			$_ => (exists $change->{$_} ? $change->{$_} : $old->{$_})
 		} @pri_cols });
@@ -302,22 +320,10 @@ sub _follow_row_changes($$) {
 		my $new = pop @$new_rows;
 		$ChangeContext->record($new);
 	}
-	# -----
-	
-	
-	# (B.) ##########################
-	# TODO: re-fetch rows that were updated via cascade here
-	#################################
-	
-	# Tell each auditor that we're done and to record the change group
-	# into the active changeset (unless the action we're following is nested):
-  unless ($nested) {
-    $_->_finish_current_change_group for ($self->all_auditors);
-  }
-	
-	return $want ? @ret : $ret[0];
+  
+  # Clear:
+  $self->_change_contexts([]);
 }
-
 
 
 around 'update' => sub {
