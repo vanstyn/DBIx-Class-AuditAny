@@ -187,7 +187,7 @@ sub _follow_row_changes($$) {
   my $args = $cnf->{args} || [];
   my $want = $cnf->{want} || wantarray;
   my $rows = $cnf->{rows};
-  my $nested = $cnf->{nested};
+  my $nested = $cnf->{nested} || 0;
   
   my $source_name = $Source->source_name;
   
@@ -205,54 +205,63 @@ sub _follow_row_changes($$) {
 	}} @$rows;
 	
 	
-	
+  # Start new change operation within each Auditor and get back
+	# all the created ChangeContexts from all auditors. The auditors
+	# will keep track of their own changes temporarily in a "group":
+  $self->_add_change_contexts(
+    map {
+      $_->_start_current_change_group($Source, $nested, $action, @change_datam)
+    } $self->all_auditors
+  );
+  
+
 	# (A.) ##########################
 	# TODO: find cascade updates here
 	#################################
 	
 	## IN PROGRESS.....
 	
-  ## If any of these columns are being changed, we have to also watch the
-  ## corresponding relationhips for changes (from cascades) during the
-  ## course of the current database operation. This can be expensive, but
-  ## we prefer accuracy over speed
-  #my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
-  #
-  ## temp: just get all of themfor now
-  ##  this should be limited to only rels associated with columns
-  ##  being changed
-  #my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
-  #
-  #foreach my $rel (@rels) {
-  #  my $rinfo = $Source->relationship_info($rel);
-  #  my $rrinfo = $Source->reverse_relationship_info($rel);
-  #  
-  #  my ($foreign) = $self->parse_cond_cols_by_alias($rinfo->{cond},'foreign');
-  #  
-  #  #scream_color(GREEN,$foreign,$rinfo,$rrinfo);
-  #  
-  #  scream_color(GREEN,$rinfo->{cond});
-  #  
-  #  #my $foreign_col = 
-  #  my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
-  #  scream_color(CYAN.BOLD,$rel_rows);
-  #}
-  #
-  #scream($Source->source_name,$cascade_cols,\@rels);
-
-	
-	
-	
-	# Start new change operation within each Auditor and get back
-	# all the created ChangeContexts from all auditors. The auditors
-	# will keep track of their own changes temporarily in a "group":
-  $self->_add_change_contexts(
-    map {
-      $_->_start_current_change_group($Source, 0,$action, @change_datam)
-    } $self->all_auditors
-  );
+  # If any of these columns are being changed, we have to also watch the
+  # corresponding relationhips for changes (from cascades) during the
+  # course of the current database operation. This can be expensive, but
+  # we prefer accuracy over speed
+  my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
   
-	# Run the supplied method:
+  # temp: just get all of themfor now
+  #  this should be limited to only rels associated with columns
+  #  being changed
+  my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
+  
+  foreach my $rel (@rels) {
+    my $rinfo = $Source->relationship_info($rel);
+    #my $rrinfo = $Source->reverse_relationship_info($rel);
+    
+    # Generate a virtual 'change' to describe what will happen in the related table
+    my $map = &_cond_foreign_keymap($rinfo->{cond});
+    my $rel_change = {};
+    foreach my $col (keys %$change) {
+      my $fcol = $map->{$col} or next;
+      $rel_change->{$fcol} = $change->{$col};
+    }
+     
+    # Only track related rows if there is at least one related change:
+    if(scalar(keys %$rel_change) > 0) {
+      # Get related rows that will be changed from the cascade:
+      my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
+      
+      # Follow these rows via special nested call:
+      $self->_follow_row_changes({
+        Source => $Source->related_source($rel),
+        rows => $rel_rows,
+        cond => {},
+        nested => 1,
+        action => 'update',
+        change => $rel_change
+      }) if(scalar @$rel_rows > 0);
+    }
+  }
+  
+	# Run the followed method, if supplied:
 	my @ret;
   if($orig) {
     try {
@@ -271,14 +280,6 @@ sub _follow_row_changes($$) {
     };
   }
   
-  
-	
-
-	
-	# (B.) ##########################
-	# TODO: re-fetch rows that were updated via cascade here
-	#################################
-	
 	# Tell each auditor that we're done and to record the change group
 	# into the active changeset (unless the action we're following is nested):
   unless ($nested) {
@@ -289,11 +290,33 @@ sub _follow_row_changes($$) {
 	return $want ? @ret : $ret[0];
 }
 
+# Builds a map that can be used to convert column names into
+# their fk name on the other side of a relationship
+sub _cond_foreign_keymap {
+  my $cond = shift;
+  my $alias = shift;
+  
+  my $map = {};
+  
+  # TODO: doesn't support all valid conditions, but *DOES*
+  # support those that express a valid CASCADE, which is
+  # what this is for
+  foreach my $k (keys %$cond) {
+    my @f = ($k,$cond->{$k});
+    my $d = {};
+    $d->{$_->[0]} = $_->[1] for (map {[split(/\./,$_,2)]} @f);
+    die "error parsing condition" 
+      unless (exists $d->{foreign} && exists $d->{self});
+    $map->{$d->{self}} = $d->{foreign};
+  }
+  return $map;
+}
+
+
 
 sub _record_change_contexts {
   my $self = shift;
   
-	# -----
 	# Fetch the new values for -each- row, independently. 
 	# Build a condition specific to this row and fetch it, 
 	# taking into account the change that was just made, and
