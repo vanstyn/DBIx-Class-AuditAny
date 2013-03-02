@@ -559,9 +559,12 @@ has '_current_change_group', is => 'rw', isa => ArrayRef[Object], default => sub
 # --
 
 sub _start_current_change_group {
-	my ($self, $Source, $action, @changes) = @_;
+	my ($self, $Source, $nested, $action, @changes) = @_;
 	
-	$self->_current_change_group([]); # just for good measure
+	my $Group = $self->_current_change_group || [];
+	$Group = [] unless ($nested);
+	
+	$self->_current_change_group($Group); # just for good measure
 	
 	my $source_name = $Source->source_name;
 	my $func_name = $source_name . '::' . $action;
@@ -578,7 +581,8 @@ sub _start_current_change_group {
 		)
 	} @changes;
 	
-	$self->_current_change_group(\@ChangeContexts);
+	push @$Group, @ChangeContexts;
+	$self->_current_change_group($Group);
 	return @ChangeContexts;
 }
 

@@ -96,7 +96,7 @@ around 'insert' => sub {
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
 	my @ChangeContexts = map { 
-		$_->_start_current_change_group($Source, 'insert',{
+		$_->_start_current_change_group($Source, 0,'insert',{
 			to_columns => $to_insert 
 		})
 	} $self->all_auditors;
@@ -171,13 +171,42 @@ around 'insert_bulk' => sub {
 };
 
 
-around 'update' => sub {
-	my ($orig, $self, @args) = @_;
-	my ($Source,$change,$cond) = @args;
+#has '_row_changes_group', is => 'rw', isa => ArrayRef[HashRef], lazy => 1, default => sub{[]};
+#sub _add_row_changes {push @{shift->_row_changes_group}, @_};
+
+sub _follow_row_changes($$) {
+  my $self = shift;
+  my $cnf = shift;
+  
+  my $Source = $cnf->{Source};
+  my $change = $cnf->{change};
+  my $cond = $cnf->{cond};
+  my $action = $cnf->{action};
+  
+  my $orig = $cnf->{method};
+  my $args = $cnf->{args} || [];
+  my $want = $cnf->{want} || wantarray;
+  my $rows = $cnf->{rows};
+  my $nested = $cnf->{nested};
 	
-	# Get the current rows that are going to be updated:
-	my $rows = get_raw_source_rows($Source,$cond);
-	
+	#$self->_row_changes_group([]) unless ($nested);
+  
+  my $source_name = $Source->source_name;
+  
+  # Get the current rows if they haven't been supplied and a
+  # condition has ($cond):
+  $rows = get_raw_source_rows($Source,$cond)
+    if (!defined $rows && defined $cond);
+
+  #$self->_add_row_changes(
+  #  map {{
+  #    source_name => $source_name
+  #    old_columns => $_,
+  #    to_columns => $change,
+  #    condition => $cond
+  #  }} @$rows
+  #);
+
 	my @change_datam = map {{
 		old_columns => $_,
 		to_columns => $change,
@@ -191,34 +220,35 @@ around 'update' => sub {
 	#################################
 	
 	## IN PROGRESS.....
-	
-	# If any of these columns are being changed, we have to also watch the
-	# corresponding relationhips for changes (from cascades) during the
-	# course of the current database operation. This can be expensive, but
-	# we prefer accuracy over speed
-	my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
-	
-	# temp: just get all of themfor now
-	#  this should be limited to only rels associated with columns
-	#  being changed
-	my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
-	
-	foreach my $rel (@rels) {
-		my $rinfo = $Source->relationship_info($rel);
-		my $rrinfo = $Source->reverse_relationship_info($rel);
-		
-		my ($foreign) = $self->parse_cond_cols_by_alias($rinfo->{cond},'foreign');
-		
-		scream_color(GREEN,$foreign,$rinfo,$rrinfo);
-		
-		#my $foreign_col = 
-		my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
-		scream_color(CYAN.BOLD,$rel_rows);
-	}
-	
-	scream($Source->source_name,$cascade_cols,\@rels);
-	
 	#
+  ## If any of these columns are being changed, we have to also watch the
+  ## corresponding relationhips for changes (from cascades) during the
+  ## course of the current database operation. This can be expensive, but
+  ## we prefer accuracy over speed
+  #my $cascade_cols = $self->_get_cascading_rekey_columns($Source);
+  #
+  ## temp: just get all of themfor now
+  ##  this should be limited to only rels associated with columns
+  ##  being changed
+  #my @rels = uniq(map { @{$cascade_cols->{$_}} } keys %$cascade_cols);
+  #
+  #foreach my $rel (@rels) {
+  #  my $rinfo = $Source->relationship_info($rel);
+  #  my $rrinfo = $Source->reverse_relationship_info($rel);
+  #  
+  #  my ($foreign) = $self->parse_cond_cols_by_alias($rinfo->{cond},'foreign');
+  #  
+  #  #scream_color(GREEN,$foreign,$rinfo,$rrinfo);
+  #  
+  #  scream_color(GREEN,$rinfo->{cond});
+  #  
+  #  #my $foreign_col = 
+  #  my $rel_rows = get_raw_source_related_rows($Source,$rel,$cond);
+  #  scream_color(CYAN.BOLD,$rel_rows);
+  #}
+  #
+  #scream($Source->source_name,$cascade_cols,\@rels);
+
 	
 	
 	
@@ -226,26 +256,27 @@ around 'update' => sub {
 	# all the created ChangeContexts from all auditors. The auditors
 	# will keep track of their own changes temporarily in a "group":
 	my @ChangeContexts = map {
-		$_->_start_current_change_group($Source, 'update', @change_datam)
+		$_->_start_current_change_group($Source, 0,$action, @change_datam)
 	} $self->all_auditors;
 	
-	# Do the actual update:
+	# Run the supplied method:
 	my @ret;
-	my $want = wantarray;
-	try {
-		#############################################################
-		# ---  Call original - scalar/list/void context agnostic  ---
-		@ret = !defined $want ? do { $self->$orig(@args); undef }
-			: $want ? $self->$orig(@args)
-				: scalar $self->$orig(@args);
-		# --- 
-		#############################################################
-	}
-	catch {
-		my $err = shift;
-		$_->_exception_cleanup($err) for ($self->all_auditors);
-		die $err;
-	};
+  if($orig) {
+    try {
+      #############################################################
+      # ---  Call original - scalar/list/void context agnostic  ---
+      @ret = !defined $want ? do { $self->$orig(@$args); undef }
+        : $want ? $self->$orig(@$args)
+          : scalar $self->$orig(@$args);
+      # --- 
+      #############################################################
+    }
+    catch {
+      my $err = shift;
+      $_->_exception_cleanup($err) for ($self->all_auditors);
+      die $err;
+    };
+  }
 	
 	# Get the primry keys, or all columns if there are none:
 	my @pri_cols = $Source->primary_columns;
@@ -279,10 +310,29 @@ around 'update' => sub {
 	#################################
 	
 	# Tell each auditor that we're done and to record the change group
-	# into the active changeset:
-	$_->_finish_current_change_group for ($self->all_auditors);
+	# into the active changeset (unless the action we're following is nested):
+  unless ($nested) {
+    $_->_finish_current_change_group for ($self->all_auditors);
+  }
 	
 	return $want ? @ret : $ret[0];
+}
+
+
+
+around 'update' => sub {
+	my ($orig, $self, @args) = @_;
+	my ($Source,$change,$cond) = @args;
+  
+  return $self->_follow_row_changes({
+    Source => $Source,
+    change => $change,
+    cond => $cond,
+    method => $orig,
+    action => 'update',
+    args => \@args,
+    want => wantarray
+  });
 };
 
 around 'delete' => sub {
@@ -306,7 +356,7 @@ around 'delete' => sub {
 	# all the created ChangeContexts from all auditors. Each auditor
 	# will keep track of its own changes temporarily in a "group":
 	my @ChangeContexts = map {
-		$_->_start_current_change_group($Source, 'delete', @change_datam)
+		$_->_start_current_change_group($Source, 0,'delete', @change_datam)
 	} $self->all_auditors;
 	
 	
