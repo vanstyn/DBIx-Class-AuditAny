@@ -44,8 +44,33 @@ test 'Verify Collected Data' => sub {
 	my $schema = $self->Auditor->collector->target_schema;
 	my $c = $self->colnames;
 	
-	pass("All is well...");
+	is(
+		$schema->resultset('AuditChangeColumn')->search_rs({
+			$c->{old} => 'big',
+			$c->{new} => 'venti',
+			$c->{column} => 'size',
+			'change.action' => 'update',
+			'change.source' => 'Product'
+		},{
+			join => { change => 'changeset' }
+		})->count => 3,
+		"Expected UPDATE records - generated from 1-layer db-side cascade"
+	);
 
+	
+	# Verify tracking of DB-SIDE CASCADE:
+	is(
+		$schema->resultset('AuditChangeColumn')->search_rs({
+			$c->{old} => 'big',
+			$c->{new} => 'venti',
+			$c->{column} => 'size',
+			'change.action' => 'update',
+			'change.source' => 'Child'
+		},{
+			join => { change => 'changeset' }
+		})->count => 3,
+		"Expected UPDATE records - generated from 2-layer db-side cascade"
+	);
 
 };
 

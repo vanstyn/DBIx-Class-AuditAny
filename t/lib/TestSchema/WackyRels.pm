@@ -21,6 +21,13 @@ use base qw/DBIx::Class::Schema/;
     { "foreign.size" => "self.name" },
     { cascade_copy => 0, cascade_delete => 0 },
   );
+	
+	__PACKAGE__->has_many(
+    "products",
+    "TestSchema::WackyRels::Product",
+    { "foreign.size" => "self.name" },
+    { cascade_copy => 0, cascade_delete => 0 },
+  );
 };
 
 {
