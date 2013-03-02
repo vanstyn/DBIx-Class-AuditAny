@@ -194,7 +194,7 @@ sub _follow_row_changes($$) {
   $self->_change_contexts([]) unless ($nested);
   
   # Get the current rows if they haven't been supplied and a
-  # condition has ($cond):
+  # condition has been supplied ($cond):
   $rows = get_raw_source_rows($Source,$cond)
     if (!defined $rows && defined $cond);
 
@@ -205,22 +205,57 @@ sub _follow_row_changes($$) {
 	}} @$rows;
 	
 	
-  # Start new change operation within each Auditor and get back
-	# all the created ChangeContexts from all auditors. The auditors
-	# will keep track of their own changes temporarily in a "group":
+  # Start new change operation within each Auditor and store the 
+	# created ChangeContexts (from all auditors) in the _change_contexts. 
+  # attribute to be updated and recorded at the end of the update. The 
+  # auditors will keep track of their own changes temporarily in a "group":
   $self->_add_change_contexts(
     map {
       $_->_start_current_change_group($Source, $nested, $action, @change_datam)
     } $self->all_auditors
   );
   
+  # -----
+  # Recursively follow effective changes in other tables that will 
+  # be caused by any db-side cascades defined in relationships:
+  $self->_follow_relationship_cascades($Source,$cond,$change);
+  # -----
+  
+	# Run the original/supplied method:
+	my @ret;
+  if($orig) {
+    try {
+      #############################################################
+      # ---  Call original - scalar/list/void context agnostic  ---
+      @ret = !defined $want ? do { $self->$orig(@$args); undef }
+        : $want ? $self->$orig(@$args)
+          : scalar $self->$orig(@$args);
+      # --- 
+      #############################################################
+    }
+    catch {
+      my $err = shift;
+      $_->_exception_cleanup($err) for ($self->all_auditors);
+      die $err;
+    };
+  }
+  
+	# Tell each auditor that we're done and to record the change group
+	# into the active changeset (unless the action we're following is nested):
+  unless ($nested) {
+    $self->_record_change_contexts;
+    $_->_finish_current_change_group for ($self->all_auditors);
+  }
+	
+	return $want ? @ret : $ret[0];
+}
 
-	# (A.) ##########################
-	# TODO: find cascade updates here
-	#################################
-	
-	## IN PROGRESS.....
-	
+
+sub _follow_relationship_cascades {
+  my ($self, $Source, $cond, $change) = @_;
+  
+  ## IN PROGRESS.....
+  
   # If any of these columns are being changed, we have to also watch the
   # corresponding relationhips for changes (from cascades) during the
   # course of the current database operation. This can be expensive, but
@@ -260,35 +295,8 @@ sub _follow_row_changes($$) {
       }) if(scalar @$rel_rows > 0);
     }
   }
-  
-	# Run the followed method, if supplied:
-	my @ret;
-  if($orig) {
-    try {
-      #############################################################
-      # ---  Call original - scalar/list/void context agnostic  ---
-      @ret = !defined $want ? do { $self->$orig(@$args); undef }
-        : $want ? $self->$orig(@$args)
-          : scalar $self->$orig(@$args);
-      # --- 
-      #############################################################
-    }
-    catch {
-      my $err = shift;
-      $_->_exception_cleanup($err) for ($self->all_auditors);
-      die $err;
-    };
-  }
-  
-	# Tell each auditor that we're done and to record the change group
-	# into the active changeset (unless the action we're following is nested):
-  unless ($nested) {
-    $self->_record_change_contexts;
-    $_->_finish_current_change_group for ($self->all_auditors);
-  }
-	
-	return $want ? @ret : $ret[0];
 }
+
 
 # Builds a map that can be used to convert column names into
 # their fk name on the other side of a relationship
