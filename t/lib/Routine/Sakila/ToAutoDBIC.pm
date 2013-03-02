@@ -44,8 +44,19 @@ test 'Verify Collected Data' => sub {
 	my $schema = $self->Auditor->collector->target_schema;
 	my $c = $self->colnames;
 	
-	pass("All is well...");
-
+	# Verify tracking of DB-SIDE CASCADE:
+	is(
+		$schema->resultset('AuditChangeColumn')->search_rs({
+			$c->{old} => '1',
+			$c->{new} => '100',
+			$c->{column} => 'language_id',
+			'change.action' => 'update',
+			'change.source' => 'Film'
+		},{
+			join => { change => 'changeset' }
+		})->count => 2,
+		"Expected specific UPDATE records - generated from db-side cascade"
+	);
 
 };
 

@@ -299,14 +299,16 @@ sub _cond_foreign_keymap {
   my $map = {};
   
   # TODO: doesn't support all valid conditions, but *DOES*
-  # support those that express a valid CASCADE, which is
-  # what this is for
+  # support those that can express a valid db-side CASCADE, 
+  # which is what this is for:
   foreach my $k (keys %$cond) {
     my @f = ($k,$cond->{$k});
     my $d = {};
     $d->{$_->[0]} = $_->[1] for (map {[split(/\./,$_,2)]} @f);
+    
     die "error parsing condition" 
       unless (exists $d->{foreign} && exists $d->{self});
+      
     $map->{$d->{self}} = $d->{foreign};
   }
   return $map;
