@@ -16,6 +16,9 @@ test 'inserts' => { desc => 'Insert Test Data' } => sub {
   my $schema = $self->Schema;
   
   $schema->txn_do(sub {
+    
+    $schema->resultset('Grade')->create({ letter => 'A' });
+    
     ok(
       # Remove $ret to force VOID context (needed to test Storgae::insert_bulk codepath)
       do { my $ret = $schema->resultset('Size')->populate([
@@ -69,6 +72,41 @@ test 'inserts' => { desc => 'Insert Test Data' } => sub {
       ]); 1; },
       "Populate Some Product rows"
     );
+  });
+	
+	$schema->txn_do(sub {
+    ok(
+      # Remove $ret to force VOID context (needed to test Storgae::insert_bulk codepath)
+      do { my $ret = $schema->resultset('Thing')->populate([
+        [qw(name size grade info)],
+        ['Blarg','big','A',"foo"],
+        ['Smlebber','medium','A',"doo-hickey"],
+      ]); 1; },
+      "Populate Some Thing rows"
+    );
+    
+    ok(
+      $schema->resultset('Thing')->create({
+        name => 'Wiget',
+        size => 'small',
+        grade => { letter => 'B' },
+        info => 'Moof bopper'
+      }),
+      "Create Thing with new Grade row"
+    );
+    
+    ok(
+      $schema->resultset('Grade')->create({
+        letter => 'C',
+        things => [
+          { name => 'willy', size => 'small', info => '?!#' },
+          { name => 'billy', size => 'medium', info => '?!#' },
+          { name => 'milly', size => 'small', info => '?!#' },
+        ]
+      }),
+      "Create Grade 'C' with Things"
+    );
+    
   });
   
 };

@@ -44,6 +44,8 @@ test 'Verify Collected Data' => sub {
 	my $schema = $self->Auditor->collector->target_schema;
 	my $c = $self->colnames;
 	
+	# Verify tracking of DB-SIDE CASCADE:
+	
 	is(
 		$schema->resultset('AuditChangeColumn')->search_rs({
 			$c->{old} => 'big',
@@ -54,11 +56,9 @@ test 'Verify Collected Data' => sub {
 		},{
 			join => { change => 'changeset' }
 		})->count => 3,
-		"Expected UPDATE records - generated from 1-layer db-side cascade"
+		"Expected Product UPDATE records - generated from 1-layer db-side cascade"
 	);
 
-	
-	# Verify tracking of DB-SIDE CASCADE:
 	is(
 		$schema->resultset('AuditChangeColumn')->search_rs({
 			$c->{old} => 'big',
@@ -69,7 +69,20 @@ test 'Verify Collected Data' => sub {
 		},{
 			join => { change => 'changeset' }
 		})->count => 3,
-		"Expected UPDATE records - generated from 2-layer db-side cascade"
+		"Expected Child UPDATE records - generated from 2-layer db-side cascade"
+	);
+	
+	is(
+		$schema->resultset('AuditChangeColumn')->search_rs({
+			$c->{old} => 'big',
+			$c->{new} => undef,
+			$c->{column} => 'size',
+			'change.action' => 'update',
+			'change.source' => 'Thing'
+		},{
+			join => { change => 'changeset' }
+		})->count => 1,
+		"Expected Thing UPDATE records - 'SET NULL' from db-side cascade"
 	);
 
 };
