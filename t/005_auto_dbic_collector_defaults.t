@@ -6,7 +6,11 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Routine::Util;
-use lib qw(t/lib);
+
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
+
 
 
 run_tests(

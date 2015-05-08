@@ -4,7 +4,10 @@ use strict;
 use warnings;
 use Test::More;
 use DBICx::TestDatabase 0.04;
-use lib qw(t/lib);
+
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
 
 
 use_ok( 'DBIx::Class::AuditAny' );
@@ -21,7 +24,7 @@ ok(
 		track_all_sources => 1,
 		collector_class => 'Collector::AutoDBIC',
 		collector_params => {
-			sqlite_db => 't/var/audit9.db',
+			sqlite_db => TestEnv->vardir->file('audit9.db')->stringify,
 		},
 	),
 	"Setup tracker configured to write to auto configured schema"

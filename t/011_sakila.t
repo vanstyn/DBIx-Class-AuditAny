@@ -4,13 +4,13 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Routine::Util;
-use lib qw(t/lib);
 
-my $db_file = '/tmp/sakila.db';
-my $db_audit_file = '/tmp/sakila-audit.db';
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
 
-unlink $db_file if (-f $db_file);
-unlink $db_audit_file if (-f $db_audit_file);
+my $db_file = TestEnv->vardir->file('sakila.db')->stringify;
+my $db_audit_file = TestEnv->vardir->file('sakila-audit.db')->stringify;
 
 run_tests(
 	"Tracking on the 'Sakila' example db (MySQL)", 

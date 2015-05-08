@@ -4,13 +4,13 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Routine::Util;
-use lib qw(t/lib);
 
-my $db_file = '/tmp/wacky.db';
-my $db_audit_file = '/tmp/wacky-audit.db';
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
 
-unlink $db_file if (-f $db_file);
-unlink $db_audit_file if (-f $db_audit_file);
+my $db_file = TestEnv->vardir->file('wacky.db')->stringify;
+my $db_audit_file = TestEnv->vardir->file('wacky-audit.db')->stringify;
 
 run_tests(
 	"Tracking on the 'WackyRels' example db", 

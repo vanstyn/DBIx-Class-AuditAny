@@ -3,7 +3,10 @@
 use strict;
 use warnings;
 use Test::More;
-use lib qw(t/lib);
+
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
 
 use SQL::Translator 0.11016;
 
@@ -27,7 +30,7 @@ ok(
 		track_all_sources => 1,
 		collector_class => 'Collector::AutoDBIC',
 		collector_params => {
-			sqlite_db => 't/var/audit_two.db',
+			sqlite_db => TestEnv->vardir->file('audit_two.db')->stringify,
 		},
 		datapoints => [
 			(qw(schema schema_ver changeset_ts changeset_elapsed)),

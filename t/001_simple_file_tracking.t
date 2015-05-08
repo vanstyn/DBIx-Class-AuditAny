@@ -4,14 +4,14 @@
 
 use strict;
 use warnings;
-use lib qw(t/lib);
 use Test::Routine::Util;
 use Test::More;
 
-mkdir('t/var') unless (-d 't/var');
-my $log = 't/var/log.txt';
-unlink $log if (-f $log);
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use TestEnv;
 
+my $log = TestEnv->vardir->file('log.txt');
 
 {
 	package FileRoutine;
