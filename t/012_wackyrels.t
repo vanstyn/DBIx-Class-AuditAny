@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Routine::Util;
-
+use lib qw(t/lib);
 
 my $db_file = '/tmp/wacky.db';
 my $db_audit_file = '/tmp/wacky-audit.db';
