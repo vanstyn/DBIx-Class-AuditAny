@@ -1,14 +1,10 @@
 # -*- perl -*-
 
-# t/005_auto_dbic_collector_defaults.t - test using mostly defaults
-
 use strict;
 use warnings;
 use Test::More;
 use DBICx::TestDatabase 0.04;
 use lib qw(t/lib);
-
-#plan tests => 12;
 
 use_ok( 'DBIx::Class::AuditAny' );
 
@@ -287,7 +283,6 @@ is_deeply(
 	$actual_change_rows, $expected_change_rows,
 	"Expected full contents of AuditChangeColumn table"
 );
-
 
 
 done_testing;
