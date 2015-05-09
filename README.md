@@ -186,7 +186,7 @@ AuditAny uses a different API than typical DBIC components. Instead of loading a
       }
     );
 
-The rationale of this approach is that change tracking isn't necesarily something that needs to be, or should be, defined as a built-in attribute of the schema class. Additionally, because of the object-based approach, it is possible to attach multiple Auditors to a single schema object with multiple calls to DBIx::Class::AuditAny->track.
+The rationale of this approach is that change tracking isn't necessarily something that needs to be, or should be, defined as a built-in attribute of the schema class. Additionally, because of the object-based approach, it is possible to attach multiple Auditors to a single schema object with multiple calls to DBIx::Class::AuditAny->track.
 
 
 
@@ -285,7 +285,7 @@ Inspired in part by the Catalyst Context object design...
 
 - Enable tracking multi-primary-key sources (code currently disabled)
 - Write lots more tests 
-- Write lots more docuemntation
+- Write lots more documentation
 - Expand and finalize API
 - Add more built-in datapoints
 - Review code and get feedback from the perl community for best practices/suggestions

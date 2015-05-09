@@ -39,7 +39,7 @@ sub changeset_do	{ (shift)->storage->changeset_do(@_) }
 sub BUILD {}
 after BUILD => sub {
 	my $self = shift;
-	# Just for good measure, not usally called because the role is applied
+	# Just for good measure, not usually called because the role is applied
 	# after the fact (see AuditAny.pm)
 	$self->_apply_storage_role;
 };

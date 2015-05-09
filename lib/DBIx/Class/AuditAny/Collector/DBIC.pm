@@ -15,7 +15,7 @@ changes in DBIC schemas
 
 =head1 DESCRIPTION
 
-This Collector facilitates recoring ChangeSets, Changes, and Column Changes within a
+This Collector facilitates recording ChangeSets, Changes, and Column Changes within a
 clean relational structure into a DBIC schema.
 
 If you don't want to handle the details of configuring this yourself, see 

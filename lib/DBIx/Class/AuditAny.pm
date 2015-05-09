@@ -784,7 +784,7 @@ see TODO below for whats still missing)
 =head2 API and Usage
 
 AuditAny uses a different API than typical DBIC components. Instead of loading at the 
-schema/result class level with C<load_components>, AudityAny is used by attaching an 
+schema/result class level with C<load_components>, AuditAny is used by attaching an 
 "Auditor" to an existing schema I<object> instance:
 
  my $schema = My::Schema->connect(@connect);
@@ -798,7 +798,7 @@ schema/result class level with C<load_components>, AudityAny is used by attachin
    }
  );
 
-The rationale of this approach is that change tracking isn't necesarily something that 
+The rationale of this approach is that change tracking isn't necessarily something that 
 needs to be, or should be, defined as a built-in attribute of the schema class. 
 Additionally, because of the object-based approach, it is possible to attach multiple 
 Auditors to a single schema object with multiple calls to DBIx::Class::AuditAny->track.
@@ -959,7 +959,7 @@ Inspired in part by the Catalyst Context object design...
 
 =item Write lots more tests 
 
-=item Write lots more docuemntation
+=item Write lots more documentation
 
 =item Expand and finalize API
 

@@ -98,10 +98,10 @@ before 'txn_begin' => sub {
 # transaction, thus hooking into after on the outermost commit
 # could cause deep recursion. 
 # TODO/FIXME: What about collectors that
-# *don't* do this, and an exception occuring within that final
+# *don't* do this, and an exception occurring within that final
 # commit??? It could possibly lead to recording a change that
 # didn't actually happen (i.e. was rolled back). I think the way
-# to handle this is for the collector to delare if it is storing
+# to handle this is for the collector to declare if it is storing
 # to the tracked schema or not, and handle each case differently
 before 'txn_commit' => sub {
 	my $self = shift;
@@ -186,14 +186,14 @@ around 'insert' => sub {
 # insert_bulk is a tricky case. It exists for the purpose of performance,
 # and skips reading back in the inserted row(s). BUT, we need to read back
 # in the inserted row, and we have no safe way of doing that with a bulk
-# insert (auto-generated auti-inc keys, etc). DBIC was already designed with
+# insert (auto-generated auto-inc keys, etc). DBIC was already designed with
 # with this understanding, and so insert_bulk is already only called when 
 # no result is needed/expected back: DBIx::Class::ResultSet->populate() called
 # in *void* context. 
 #
 # Based on this fact, I think that the only rational way to be able to
 # Audit the inserted rows is to override and convert any calls to insert_bulk()
-# into calls to regular calls to insert(). Interferring with the original
+# into calls to regular calls to insert(). Interfering with the original
 # flow/operation is certainly not ideal, but I don't see any alternative.
 around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;

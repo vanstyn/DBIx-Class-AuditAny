@@ -15,7 +15,7 @@ changes in auto-generated DBIC schemas
 
 =head1 DESCRIPTION
 
-This Collector facilitates recoring ChangeSets, Changes, and Column Changes within a
+This Collector facilitates recording ChangeSets, Changes, and Column Changes within a
 clean relational structure into an automatically configured and deployed DBIC schema
 using SQLite database files.
 
