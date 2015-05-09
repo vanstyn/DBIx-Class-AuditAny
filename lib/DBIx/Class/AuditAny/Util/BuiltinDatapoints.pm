@@ -1,25 +1,42 @@
 package # Hide from PAUSE 
     DBIx::Class::AuditAny::Util::BuiltinDatapoints;
 
-# VERSION
 # ABSTRACT: Built-in datapoint configs for DBIx::Class::AuditAny
+
+=head1 NAME
+
+DBIx::Class::AuditAny::Util::BuiltinDatapoints - Built-in datapoint configs for DBIx::Class::AuditAny
+
+=head1 DESCRIPTION
+
+These are just lists of predefined hashref configs ($cnf) - DataPoint constructor arg
+i.e. my $DataPoint = DBIx::Class::AuditAny::DataPoint->new(%$cnf);
+
+This module is used internally and should not need to be called directly
+
+=head1 METHODS
+
+=cut
 
 use strict;
 use warnings;
 
-# This are just lists of predefined hashref configs ($cnf) - DataPoint constructor arg
-#  i.e. my $DataPoint = DBIx::Class::AuditAny::DataPoint->new(%$cnf);
 
+=head2 all_configs
+
+Return all the builtin configs
+
+=cut
 sub all_configs {(
-	&base_context,
-	&source_context,
-	&set_context,
-	&change_context,
-	&column_context,
+	&_base_context,
+	&_source_context,
+	&_set_context,
+	&_change_context,
+	&_column_context,
 )}
 
 
-sub base_context {
+sub _base_context {
 	map {{ context => 'base', %$_ }} (
 		{
 			name 			=> 'schema', 
@@ -35,7 +52,7 @@ sub base_context {
 }
 
 # set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
-sub source_context {
+sub _source_context {
 	map {{ context => 'source', method => $_->{name}, %$_ }} (
 		{
 			name 			=> 'source', 
@@ -65,7 +82,7 @@ sub source_context {
 }
 
 # set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
-sub set_context {
+sub _set_context {
 	map {{ context => 'set', method => $_->{name}, %$_ }} (
 		{
 			name 			=> 'changeset_ts', 
@@ -91,7 +108,7 @@ sub set_context {
 }
 
 # set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
-sub change_context {
+sub _change_context {
 	map {{ context => 'change', method => $_->{name}, %$_ }} (
 		{
 			name 			=> 'change_ts', 
@@ -133,7 +150,7 @@ sub change_context {
 }
 
 # set 'method' as a direct passthrough to $Context->'name' per default (see DataPoint class)
-sub column_context {
+sub _column_context {
 	map {{ context => 'column', method => $_->{name}, %$_ }} (
 		{
 			name 			=> 'column_name', 
@@ -155,3 +172,38 @@ sub column_context {
 
 
 1;
+
+__END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

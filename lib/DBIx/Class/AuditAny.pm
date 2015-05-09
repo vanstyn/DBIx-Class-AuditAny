@@ -803,7 +803,6 @@ needs to be, or should be, defined as a built-in attribute of the schema class.
 Additionally, because of the object-based approach, it is possible to attach multiple 
 Auditors to a single schema object with multiple calls to DBIx::Class::AuditAny->track.
 
-
 =head1 DATAPOINTS
 
 As changes occur in the tracked schema, information is collected in the form of 
@@ -950,6 +949,94 @@ Inspired in part by the Catalyst Context object design...
 
 =back
 
+=head1 ATTRIBUTES
+
+Note: Documentation of all the individual attrs and methods is still TBD...
+
+=head2 allow_multiple_auditors
+
+=head2 auto_include_user_defined_datapoints
+
+=head2 build_init_args
+
+=head2 calling_action_function
+
+=head2 change_context_class
+
+=head2 changeset_context_class
+
+=head2 collector_class
+
+=head2 collector_params
+
+=head2 column_context_class
+
+=head2 datapoint_configs
+
+=head2 default_datapoint_class
+
+=head2 disable_datapoints
+
+=head2 primary_key_separator
+
+=head2 record_empty_changes
+
+=head2 rename_datapoints
+
+=head2 schema
+
+=head2 source_context_class
+
+=head2 time_zone
+
+=head2 track_actions
+
+=head2 track_immutable
+
+=head2 track_init_args
+
+=head2 tracked_action_functions
+
+=head2 tracked_sources
+
+=head1 METHODS
+
+=head2 get_dt
+
+=head2 track
+
+=head2 get_datapoint_orig
+
+=head2 add_datapoints
+
+=head2 all_datapoints
+
+=head2 get_context_datapoint_names
+
+=head2 get_context_datapoints
+
+=head2 local_datapoint_data
+
+=head2 track_sources
+
+=head2 track_all_sources
+
+=head2 init_all_sources
+
+=head2 init_sources
+
+=head2 start_unless_changeset
+
+=head2 start_changeset
+
+=head2 finish_changeset
+
+=head2 finish_if_changeset
+
+=head2 clear_changeset
+
+=head2 record_changes
+
 
 =head1 TODO
 
@@ -999,7 +1086,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

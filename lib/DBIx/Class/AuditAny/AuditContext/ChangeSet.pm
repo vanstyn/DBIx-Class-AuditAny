@@ -17,7 +17,9 @@ class for DBIx::Class::AuditAny
 
 This object class represents a "set" of changes grouped together, typically all applied within
 the scope of a single transaction. The changes can span across multiple individual changes, 
-which can also represent changes to multiple different columns
+which can also represent changes to multiple different columns.
+
+This class is used internally and should not be used directly.
 
 =cut
 
@@ -28,6 +30,24 @@ sub _build_local_datapoint_data {
 	my $self = shift;
 	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('set') };
 }
+
+=head1 ATTRIBUTES
+
+Docs regarding the API/purpose of the attributes and methods in this class still TBD...
+
+=head2 changes
+
+=head2 finished
+
+=head2 changeset_ts
+
+=head2 start_timeofday
+
+=head2 changeset_finish_ts
+
+=head2 changeset_elapsed
+
+=cut
 
 has 'changes', is => 'ro', isa => ArrayRef, default => sub {[]};
 has 'finished', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
@@ -45,6 +65,19 @@ sub BUILD {
 	$self->changeset_ts;
 }
 
+=head1 METHODS
+
+=head2 all_changes
+
+=head2 count_changes
+
+=head2 all_column_changes
+
+=head2 add_changes
+
+=head2 finish
+
+=cut
 
 sub all_changes { @{(shift)->changes} }
 sub count_changes { scalar(@{(shift)->changes}) }
@@ -86,6 +119,22 @@ sub finish {
 
 1;
 
+__END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
 =head1 SUPPORT
  
 IRC:
@@ -98,7 +147,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

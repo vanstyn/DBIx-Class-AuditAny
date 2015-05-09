@@ -1,8 +1,18 @@
-package # Hide from PAUSE 
-     DBIx::Class::AuditAny::Util;
+package DBIx::Class::AuditAny::Util;
 
-# VERSION
 # ABSTRACT: Util functions for DBIx::Class::AuditAny
+
+=head1 NAME
+
+DBIx::Class::AuditAny::Util - Util functions for DBIx::Class::AuditAny
+
+=head1 DESCRIPTION
+
+This package contains misc util funcs used in the L<DBIx::Class::AuditAny> codebase
+
+=head1 FUNCTIONS
+
+=cut
 
 #*CORE::GLOBAL::die = sub { require Carp; Carp::confess };
 
@@ -22,11 +32,21 @@ our @EXPORT = qw(
 # debug util funcs
 push @EXPORT, qw(scream scream_color);
 
+=head2 scream
+
+Prints the supplied object/structure using Dumper
+
+=cut
 sub scream {
 	local $_ = caller_data(3);
 	scream_color(YELLOW . BOLD,@_);
 }
 
+=head2 scream_color
+
+Prints the supplied object/structure using Dumper. The first arg can be a color code.
+
+=cut
 sub scream_color {
 	#return unless ($ENV{DEBUG}); ##<---- new: disabled without 'DEBUG'
 	my $color = shift;
@@ -51,8 +71,12 @@ sub scream_color {
 	print STDERR $pre . $color . $data . CLEAR . "\n";
 }
 
-# Returns an arrayref of hashes containing standard 'caller' function data
-# with named properties:
+=head2 caller_data
+
+Returns an arrayref of hashes containing standard 'caller' function data
+with named properties
+
+=cut
 sub caller_data {
 	my $depth = shift || 1;
 	
@@ -67,6 +91,11 @@ sub caller_data {
 	return \@list;
 }
 
+=head2 package_exists
+
+Check if the package exists
+
+=cut
 #unmht://www.develop-help.com.unmht/http.5/perl/examples/havepack.mhtml/
 sub package_exists(@) {
 	my ($pack) = @_;
@@ -78,6 +107,12 @@ sub package_exists(@) {
 	return exists $base->{$pack."::"};
 }
 
+=head2 resolve_localclass
+
+Loads the class name, relative to DBIx::Class::AuditAny:: or absolute when
+prefixed with '+'
+
+=cut
 sub resolve_localclass($) { 
 	my $class = shift;
 	$class = $class =~ /^\+(.*)$/ ? $1 : "DBIx::Class::AuditAny::$class";
@@ -85,9 +120,13 @@ sub resolve_localclass($) {
 	return $class;
 }
 
-# uniq() util func:
-# Returns a list with duplicates removed. If passed a single arrayref, duplicates are
-# removed from the arrayref in place, and the new list (contents) are returned.
+
+=head2 uniq
+
+Returns a list with duplicates removed. If passed a single arrayref, duplicates are
+removed from the arrayref in place, and the new list (contents) are returned.
+
+=cut
 sub uniq {
 	my %seen = ();
 	return grep { !$seen{$_}++ } @_ unless (@_ == 1 and ref($_[0]) eq 'ARRAY');
@@ -99,7 +138,11 @@ sub uniq {
 }
 
 
-# (logic adapted from DBIx::Class::Storage::DBI::insert)
+=head2 get_raw_source_rows
+
+logic adapted from L<DBIx::Class::Storage#insert>
+
+=cut
 sub get_raw_source_rows {
 	my $Source = shift;
 	my $cond = shift;
@@ -121,6 +164,10 @@ sub get_raw_source_rows {
 	return \@rows;
 }
 
+
+=head2 get_raw_source_related_rows
+
+=cut
 sub get_raw_source_related_rows {
 	my $Source = shift;
 	my $rel = shift;
@@ -151,3 +198,38 @@ sub get_raw_source_related_rows {
 
 
 1;
+
+__END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

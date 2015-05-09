@@ -23,6 +23,40 @@ This class extends L<DBIx::Class::AuditAny::Collector::DBIC> which provides grea
 flexibility for configuration, can record to different forms of databases and tables,
 and so on
 
+=head1 ATTRIBUTES
+
+Docs regarding the API/purpose of the attributes and methods in this class still TBD...
+
+=head2 auto_deploy
+
+=head2 change_data_rel
+
+=head2 change_source_name
+
+=head2 changeset_source_name
+
+=head2 column_change_source_name
+
+=head2 column_data_rel
+
+=head2 deploy_info_source_name
+
+=head2 reverse_change_data_rel
+
+=head2 reverse_changeset_data_rel
+
+=head2 sqlite_db
+
+=head1 METHODS
+
+=head2 get_context_column_infos
+
+=head2 init_schema_namespace
+
+=head2 deploy_schema
+
+=head2 get_clean_md5
+
 =cut
 
 use DBIx::Class::AuditAny::Util;
@@ -331,6 +365,21 @@ sub get_clean_md5 {
 1;
 
 __END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
 =head1 SUPPORT
  
 IRC:
@@ -343,7 +392,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

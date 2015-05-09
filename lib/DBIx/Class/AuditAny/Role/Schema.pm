@@ -30,10 +30,31 @@ use DBIx::Class::AuditAny::Role::Storage;
 
 requires 'txn_do';
 
+=head1 METHODS
+
+=head2 auditors
+
+=cut
 sub auditors			{ (shift)->storage->auditors(@_) }
+
+=head2 all_auditors
+
+=cut
 sub all_auditors	{ (shift)->storage->all_auditors(@_) }
+
+=head2 auditor_count
+
+=cut
 sub auditor_count	{ (shift)->storage->auditor_count(@_) }
+
+=head2 add_auditor
+
+=cut
 sub add_auditor		{ (shift)->storage->add_auditor(@_) }
+
+=head2 changeset_do	
+
+=cut
 sub changeset_do	{ (shift)->storage->changeset_do(@_) }
 
 sub BUILD {}
@@ -56,6 +77,21 @@ sub _apply_storage_role {
 
 
 __END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
 =head1 SUPPORT
  
 IRC:
@@ -68,7 +104,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

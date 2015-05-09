@@ -22,6 +22,8 @@ columns.
 
 =head1 ATTRIBUTES
 
+Docs regarding the API/purpose of the attributes and methods in this class still TBD...
+
 =head2 SourceContext
 
 The Source context
@@ -49,6 +51,7 @@ has 'action', is => 'ro', isa => Enum[qw(insert update delete)], required => 1;
 
 The column values of the row, -according to the db- *before* the change happens.
 This should be an empty hashref in the case of 'insert'
+
 =cut
 has 'old_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
@@ -59,6 +62,7 @@ the client/query). Note that this is different from 'new_columns' and
 probably doesn't contain all the columns. This should be an empty
 hashref in the case of 'delete'
 (TODO: would 'change_columns' a better name than 'to_columns'?)
+
 =cut
 has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
 
@@ -66,40 +70,28 @@ has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
 
 The column values of the row, -according to the db- *after* the change happens.
 This should be an empty hashref in the case of 'delete' 
+
 =cut
 has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
 =head2 condition
+
 The condition associated with this change, applies to 'update' and 'delete'
+
 =cut
 has 'condition', is => 'ro', isa => Ref, lazy => 1, default => sub {{}};
 
+=head2 recorded
+
+Boolean flag set to true once the change data has been recorded
+
+=cut
 has 'recorded', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
 
 
-sub class { (shift)->SourceContext->class }
-sub ResultSource { (shift)->SourceContext->ResultSource }
-sub source { (shift)->SourceContext->source }
-sub pri_key_column { (shift)->SourceContext->pri_key_column }
-sub pri_key_count { (shift)->SourceContext->pri_key_column }
-sub primary_columns { (shift)->SourceContext->primary_columns }
-sub get_pri_key_value { (shift)->SourceContext->get_pri_key_value(@_) }
+=head2 pri_key_value
 
-
-sub _build_tiedContexts { 
-	my $self = shift;
-	my @Contexts = ( $self->SourceContext );
-	unshift @Contexts, $self->ChangeSetContext if ($self->ChangeSetContext);
-	return \@Contexts;
-}
-sub _build_local_datapoint_data { 
-	my $self = shift;
-	$self->enforce_recorded;
-	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('change') };
-}
-
-
-
+=cut
 has 'pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => sub { 
 	my $self = shift;
 	$self->enforce_recorded;
@@ -112,6 +104,9 @@ has 'pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => sub {
 	#return $self->get_pri_key_value($Row);
 };
 
+=head2 orig_pri_key_value
+
+=cut
 has 'orig_pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => sub { 
 	my $self = shift;
 	
@@ -122,60 +117,29 @@ has 'orig_pri_key_value', is => 'ro', isa => Maybe[Str], lazy => 1, default => s
 	#return $self->get_pri_key_value($self->origRow);
 };
 
+
+=head2 change_ts
+
+=cut
 has 'change_ts', is => 'ro', isa => InstanceOf['DateTime'], lazy => 1, default => sub {
 	my $self = shift;
 	$self->enforce_unrecorded;
 	return $self->get_dt;
 };
 
+=head2 start_timeofday
+
+=cut
 has 'start_timeofday', is => 'ro', default => sub { [gettimeofday] };
+
+=head2 change_elapsed
+
+=cut
 has 'change_elapsed', is => 'rw', default => sub{undef};
 
+=head2 column_changes
 
-sub record {
-	my $self = shift;
-	my $new_columns = shift;
-	$self->enforce_unrecorded;
-	$self->change_ts;
-	$self->change_elapsed(tv_interval($self->start_timeofday));
-	
-	%{$self->new_columns} = %$new_columns if (
-		ref($new_columns) eq 'HASH' and
-		scalar(keys %$new_columns) > 0
-	);
-	
-	$self->recorded(1);
-}
-
-
-# action_id exists so collectors can store the action as a shorter id
-# instead of the full name.
-sub action_id {
-	my $self = shift;
-	my $action = $self->action or return undef;
-	my $id = $self->action_id_map->{$action} or die "Error looking up action_id";
-	return $id;
-}
-
-has 'action_id_map', is => 'ro', isa => HashRef[Int], default => sub {{
-	insert => 1,
-	update => 2,
-	delete => 3
-}};
-
-
-
-sub enforce_unrecorded {
-	my $self = shift;
-	die "Error: Audit action already recorded!" if ($self->recorded);
-}
-
-sub enforce_recorded {
-	my $self = shift;
-	die "Error: Audit action not recorded yet!" unless ($self->recorded);
-}
-
-
+=cut
 has 'column_changes', is => 'ro', isa => HashRef[Object], lazy => 1, default => sub {
 	my $self = shift;
 	$self->enforce_recorded;
@@ -210,9 +174,6 @@ has 'column_changes', is => 'ro', isa => HashRef[Object], lazy => 1, default => 
 	
 	return \%col_context;
 };
-
-
-sub all_column_changes { values %{(shift)->column_changes} }
 
 has 'column_datapoint_values', is => 'ro', isa => HashRef, lazy => 1, default => sub {
 	my $self = shift;
@@ -254,6 +215,100 @@ has 'column_changes_arr_arr_table', is => 'ro', isa => ArrayRef,
 
 
 
+=head1 METHODS
+
+=head2 class
+
+=head2 ResultSource
+
+=head2 source
+
+=head2 pri_key_column
+
+=head2 pri_key_count
+
+=head2 primary_columns
+
+=head2 get_pri_key_value
+
+=head2 record
+
+=head2 action_id
+
+=head2 enforce_recorded
+
+=head2 enforce_unrecorded
+
+=head2 all_column_changes
+
+=head2 arr_arr_ascii_table
+
+=cut
+sub class             { (shift)->SourceContext->class }
+sub ResultSource      { (shift)->SourceContext->ResultSource }
+sub source            { (shift)->SourceContext->source }
+sub pri_key_column    { (shift)->SourceContext->pri_key_column }
+sub pri_key_count     { (shift)->SourceContext->pri_key_column }
+sub primary_columns   { (shift)->SourceContext->primary_columns }
+sub get_pri_key_value { (shift)->SourceContext->get_pri_key_value(@_) }
+
+sub _build_tiedContexts { 
+	my $self = shift;
+	my @Contexts = ( $self->SourceContext );
+	unshift @Contexts, $self->ChangeSetContext if ($self->ChangeSetContext);
+	return \@Contexts;
+}
+sub _build_local_datapoint_data { 
+	my $self = shift;
+	$self->enforce_recorded;
+	return { map { $_->name => $_->get_value($self) } $self->get_context_datapoints('change') };
+}
+
+sub record {
+	my $self = shift;
+	my $new_columns = shift;
+	$self->enforce_unrecorded;
+	$self->change_ts;
+	$self->change_elapsed(tv_interval($self->start_timeofday));
+	
+	%{$self->new_columns} = %$new_columns if (
+		ref($new_columns) eq 'HASH' and
+		scalar(keys %$new_columns) > 0
+	);
+	
+	$self->recorded(1);
+}
+
+
+# action_id exists so collectors can store the action as a shorter id
+# instead of the full name.
+sub action_id {
+	my $self = shift;
+	my $action = $self->action or return undef;
+	my $id = $self->_action_id_map->{$action} or die "Error looking up action_id";
+	return $id;
+}
+
+has '_action_id_map', is => 'ro', default => sub {{
+	insert => 1,
+	update => 2,
+	delete => 3
+}}, isa => HashRef[Int];
+
+
+
+sub enforce_unrecorded {
+	my $self = shift;
+	die "Error: Audit action already recorded!" if ($self->recorded);
+}
+
+sub enforce_recorded {
+	my $self = shift;
+	die "Error: Audit action not recorded yet!" unless ($self->recorded);
+}
+
+sub all_column_changes { values %{(shift)->column_changes} }
+
 sub arr_arr_ascii_table {
 	my $self = shift;
 	my $table = shift;
@@ -282,6 +337,22 @@ sub arr_arr_ascii_table {
 
 1;
 
+__END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
 =head1 SUPPORT
  
 IRC:
@@ -294,7 +365,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.

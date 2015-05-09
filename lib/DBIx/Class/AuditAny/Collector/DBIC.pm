@@ -22,14 +22,24 @@ If you don't want to handle the details of configuring this yourself, see
 L<DBIx::Class::AuditAny::Collector::AutoDBIC> which is a subclass of us, but handles
 most of the defaults for you w/o fuss.
 
+=head1 ATTRIBUTES
+
+Docs regarding the API/purpose of the attributes and methods in this class still TBD...
+
+=head2 target_schema
+
+=head2 target_source
+
+=head2 change_data_rel
+
+=head2 column_data_rel
+
 =cut
 
 has 'target_schema', is => 'ro', isa => Object, lazy => 1, default => sub { (shift)->AuditObj->schema };
-
 has 'target_source', is => 'ro', isa => Str, required => 1;
 has 'change_data_rel', is => 'ro', isa => Maybe[Str];
 has 'column_data_rel', is => 'ro', isa => Maybe[Str];
-
 
 
 # the top level source; could be either change or changeset
@@ -118,6 +128,11 @@ sub BUILD {
 
 }
 
+=head1 METHODS
+
+=head2 validate_target_schema
+
+=cut
 sub validate_target_schema {
 	my $self = shift;
 	
@@ -127,7 +142,9 @@ sub validate_target_schema {
 	
 }
 
+=head2 enforce_source_has_columns
 
+=cut
 sub enforce_source_has_columns {
 	my $self = shift;
 	my $Source = shift;
@@ -142,7 +159,9 @@ sub enforce_source_has_columns {
 		join(',',map { "'$_'" } @missing);
 }
 
+=head2 get_add_create_change
 
+=cut
 sub get_add_create_change {
 	my $self = shift;
 	my $ChangeContext = shift;
@@ -160,7 +179,9 @@ sub get_add_create_change {
 	return $create;
 }
 
+=head2 add_change_row
 
+=cut
 sub add_change_row {
 	my $self = shift;
 	my $ChangeContext = shift;
@@ -168,6 +189,9 @@ sub add_change_row {
 	return $self->changeSource->resultset->create($create);
 }
 
+=head2 add_changeset_row
+
+=cut
 sub add_changeset_row {
 	my $self = shift;
 	my $ChangeSetContext = shift;
@@ -186,6 +210,9 @@ sub add_changeset_row {
 
 ######### Public API #########
 
+=head2 record_changes
+
+=cut
 sub record_changes {
 	my $self = shift;
 	my $ChangeSet = shift;
@@ -197,6 +224,9 @@ sub record_changes {
 	return 1;
 }
 
+=head2 has_full_row_stored
+
+=cut
 sub has_full_row_stored {
 	my $self = shift;
 	my $Row = shift;
@@ -230,6 +260,21 @@ sub has_full_row_stored {
 
 
 __END__
+
+=head1 SEE ALSO
+
+=over
+
+=item *
+
+L<DBIx::Class::AuditAny>
+
+=item *
+
+L<DBIx::Class>
+
+=back
+
 =head1 SUPPORT
  
 IRC:
@@ -242,7 +287,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
