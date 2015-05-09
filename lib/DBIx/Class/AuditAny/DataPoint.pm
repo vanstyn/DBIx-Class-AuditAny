@@ -2,31 +2,37 @@ package DBIx::Class::AuditAny::DataPoint;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Object class for AuditAny datapoint configs
 
-# This class defines the *config* of a datapoint, not the *value* 
-# of the datapoint. It is used to get the value, but the value itself
-# is not stored within this object. Datapoint values are stored within 
-# the Context objects whose life-cycle is limited to individual tracked 
-# database operations, and -only- after being called from the Collector.
-#
-# Datapoints are just only optional sugar for abstracting and simplifying
-# useful collection of data as key/values. It just provides a nice way to
-# organize data that has already been retrieved. They are *never* automatically
-# calculated; only made available to the Collector. Note that this means
-# datapoint values are only retrieved -after- the database operation is completed,
-# and thus only have access to the data that has already been collected (or is
-# otherwise available to) the given Context object. I thought long and hard
-# about this design... At one point I was going to expand the paradigm to
-# provide 'pre' vs 'post' hooks, but ultimately decided that this would be
-# overkill and over-complicate things. To accomplish custom collection of 
-# data at the 'pre' stage (i.e. *before* the tracked database operation is
-# executed) a custom Context object should be written. This could then of 
-# course be paired with a custom datapoint config to access this extra data
-# in the custom Context, but that is incidental (i.e. just organizing the data
-# after the actual work to collect it)
+=head1 NAME
 
+DBIx::Class::AuditAny::DataPoint - Object class for AuditAny datapoint configs
+
+=head1 DESCRIPTION
+
+This class defines the *config* of a datapoint, not the *value* 
+of the datapoint. It is used to get the value, but the value itself
+is not stored within this object. Datapoint values are stored within 
+the Context objects whose life-cycle is limited to individual tracked 
+database operations, and -only- after being called from the Collector.
+
+Datapoints are just only optional sugar for abstracting and simplifying
+useful collection of data as key/values. It just provides a nice way to
+organize data that has already been retrieved. They are *never* automatically
+calculated; only made available to the Collector. Note that this means
+datapoint values are only retrieved -after- the database operation is completed,
+and thus only have access to the data that has already been collected (or is
+otherwise available to) the given Context object. I thought long and hard
+about this design... At one point I was going to expand the paradigm to
+provide 'pre' vs 'post' hooks, but ultimately decided that this would be
+overkill and over-complicate things. To accomplish custom collection of 
+data at the 'pre' stage (i.e. *before* the tracked database operation is
+executed) a custom Context object should be written. This could then of 
+course be paired with a custom datapoint config to access this extra data
+in the custom Context, but that is incidental (i.e. just organizing the data
+after the actual work to collect it)
+
+=cut
 
 use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
@@ -84,3 +90,24 @@ sub get_value {
 }
 
 1;
+
+__END__
+
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

@@ -2,16 +2,27 @@ package DBIx::Class::AuditAny::Collector::DBIC;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Collector class for recording AuditAny changes in DBIC schemas
 
 use Moo;
 use MooX::Types::MooseLike::Base qw(:all);
 with 'DBIx::Class::AuditAny::Role::Collector';
 
-#use Moose;
-#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object CodeRef);
+=head1 NAME
 
+DBIx::Class::AuditAny::Collector::DBIC - Collector class for recording AuditAny 
+changes in DBIC schemas
+
+=head1 DESCRIPTION
+
+This Collector facilitates recoring ChangeSets, Changes, and Column Changes within a
+clean relational structure into a DBIC schema.
+
+If you don't want to handle the details of configuring this yourself, see 
+L<DBIx::Class::AuditAny::Collector::AutoDBIC> which is a subclass of us, but handles
+most of the defaults for you w/o fuss.
+
+=cut
 
 has 'target_schema', is => 'ro', isa => Object, lazy => 1, default => sub { (shift)->AuditObj->schema };
 
@@ -216,3 +227,24 @@ sub has_full_row_stored {
 
 
 1;
+
+
+__END__
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

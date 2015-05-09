@@ -8,9 +8,6 @@ use warnings;
 use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
-#use Moose;
-#use MooseX::Types::Moose qw(HashRef ArrayRef Str Bool Maybe Object);
-
 use Class::MOP;
 use Class::MOP::Class;
 use DateTime;
@@ -946,4 +943,23 @@ Inspired in part by the Catalyst Context object design...
  
 =back
 
+
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
+

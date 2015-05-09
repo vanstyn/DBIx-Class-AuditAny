@@ -2,7 +2,6 @@ package DBIx::Class::AuditAny::AuditContext::Change;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Default 'Change' context object class for DBIx::Class::AuditAny
 
 use Moo;
@@ -12,29 +11,67 @@ extends 'DBIx::Class::AuditAny::AuditContext';
 use Time::HiRes qw(gettimeofday tv_interval);
 use DBIx::Class::AuditAny::Util;
 
+=head1 NAME
+
+DBIx::Class::AuditAny::AuditContext::Change - Default 'Change' context object for DBIC::AuditAny
+
+=head1 DESCRIPTION
+
+This is the class which represents a single captured change event, which could involve multiple
+columns.
+
+=head1 ATTRIBUTES
+
+=head2 SourceContext
+
+The Source context
+
+=cut
 has 'SourceContext', is => 'ro', isa => Object, required => 1;
+
+=head2 ChangeSetContext
+
+The parent ChangeSet
+
+=cut
 has 'ChangeSetContext', is => 'rw', isa => Maybe[Object], default => sub{undef};
+
+
+=head2 action
+
+The type of action which triggered this change: insert, update or delete/
+
+=cut
 has 'action', is => 'ro', isa => Enum[qw(insert update delete)], required => 1;
 
-# old_columns: The column values of the row, -according to the db-
-# *before* the change happens. This should be an empty hashref in the
-# case of 'insert'
+
+=head2 old_columns
+
+The column values of the row, -according to the db- *before* the change happens.
+This should be an empty hashref in the case of 'insert'
+=cut
 has 'old_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
-# to_columns: The column changes specified -by the change- (specified by
-# the client/query). Note that this is different from 'new_columns' and
-# probably doesn't contain all the columns. This should be an empty
-# hashref in the case of 'delete'
-# (TODO: would 'change_columns' a better name than 'to_columns'?)
+=head2 to_columns
+
+The column changes specified -by the change- (specified by
+the client/query). Note that this is different from 'new_columns' and
+probably doesn't contain all the columns. This should be an empty
+hashref in the case of 'delete'
+(TODO: would 'change_columns' a better name than 'to_columns'?)
+=cut
 has 'to_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub{{}};
 
-# new_columns: The column values of the row, -according to the db-
-# *after* the change happens. This should be an empty hashref in the 
-# case of 'delete'
+=head2 new_columns
+
+The column values of the row, -according to the db- *after* the change happens.
+This should be an empty hashref in the case of 'delete' 
+=cut
 has 'new_columns', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
-# condition: The condition associated with this change, applies to
-# 'update' and 'delete'
+=head2 condition
+The condition associated with this change, applies to 'update' and 'delete'
+=cut
 has 'condition', is => 'ro', isa => Ref, lazy => 1, default => sub {{}};
 
 has 'recorded', is => 'rw', isa => Bool, default => sub{0}, init_arg => undef;
@@ -243,6 +280,23 @@ sub arr_arr_ascii_table {
 	return $t->render;
 }
 
-
-
 1;
+
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

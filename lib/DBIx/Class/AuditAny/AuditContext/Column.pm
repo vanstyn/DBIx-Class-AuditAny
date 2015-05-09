@@ -2,8 +2,19 @@ package DBIx::Class::AuditAny::AuditContext::Column;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Default 'Column' context object class for DBIx::Class::AuditAny
+
+=head1 NAME
+
+DBIx::Class::AuditAny::AuditContext::Column - Default 'Column' context object for DBIx::Class::AuditAny
+
+=head1 DESCRIPTION
+
+This class tracks a single change to a single column, belonging to a parent "Change" context which 
+represents multiple column changes, and the Change may belong to a "ChangeSet" which may comprise 
+multiple different Changes, which of which having 1 or more column change contexts.
+
+=cut
 
 use Moo;
 use MooX::Types::MooseLike::Base qw(:all);
@@ -35,3 +46,23 @@ sub _build_local_datapoint_data {
 
 
 1;
+
+__END__
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

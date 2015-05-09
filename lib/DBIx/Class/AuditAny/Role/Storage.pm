@@ -2,7 +2,6 @@ package DBIx::Class::AuditAny::Role::Storage;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Storage objects
 
 use Moo::Role;
@@ -13,11 +12,37 @@ use MooX::Types::MooseLike::Base qw(:all);
 ##  2. track changes in FK with cascade
 
 
+=head1 NAME
+
+DBIx::Class::AuditAny::Role::Storage - Role to apply to tracked DBIx::Class::Storage objects
+
+=head1 DESCRIPTION
+
+This role adds the hooks to the DBIC Storage object to be able to sniff and collect change data
+has it happens in real time.
+
+=cut
+
 use strict;
 use warnings;
 use Try::Tiny;
 use DBIx::Class::AuditAny::Util;
 use Term::ANSIColor qw(:constants);
+
+
+=head1 REQUIRES
+
+=head2 txn_do
+
+=head2 insert
+
+=head2 update
+
+=head2 delete
+
+=head2 insert_bulk
+
+=cut
 
 requires 'txn_do';
 requires 'insert';
@@ -25,9 +50,37 @@ requires 'update';
 requires 'delete';
 requires 'insert_bulk';
 
+=head1 ATTRIBUTES
+
+head2 auditors
+
+List of Auditor objects which we are collecting data for. Typically there will be only one
+Auditor, but there can be many, allowing for data to be logged to a file by one, logged in
+a database by another, and then some other random watcher which takes some action when a 
+certain event is detected. All of these can run simultaneously, and receive the sniffed data
+which we will collect only once.
+=cut
 has 'auditors', is => 'ro', lazy => 1, default => sub {[]};
+
+
+=head1 METHODS
+
+=head2 all_auditors
+
+Returns a list of all configured Auditor objects
+=cut
 sub all_auditors { @{(shift)->auditors} }
+
+=head2 auditor_count
+
+The number of configured auditors
+=cut
 sub auditor_count { scalar (shift)->all_auditors }
+
+=head2 add_auditor
+
+Adds a new Auditor object(s) to report to
+=cut
 sub add_auditor { push @{(shift)->auditors},(shift) }
 
 
@@ -452,7 +505,7 @@ sub _get_cascading_rekey_columns {
 			next unless ($rels->{$rel}{attrs}{accessor} eq 'multi');
 			
 			# Get all the local columns that effect (i.e. might cascade to) this relationship:
-			my @cols = $self->parse_cond_cols_by_alias($rels->{$rel}{cond},'self');
+			my @cols = $self->_parse_cond_cols_by_alias($rels->{$rel}{cond},'self');
 			
 			# Add the relationship to list for each column.
 			#$cascade_cols->{$_} ||= [] for (@cols); #<-- don't need this
@@ -467,7 +520,7 @@ sub _get_cascading_rekey_columns {
 
 has '_source_cascade_rekey_cols', is => 'ro', isa => HashRef, lazy => 1, default => sub {{}};
 
-sub parse_cond_cols_by_alias {
+sub _parse_cond_cols_by_alias {
 	my $self = shift;
 	my $cond = shift;
 	my $alias = shift;
@@ -488,6 +541,11 @@ sub parse_cond_cols_by_alias {
 }
 
 
+=head2 changeset_do
+
+TODO... currently is just a wrapper around a native txn_do call. Not sure what this is meant
+to do...
+=cut
 sub changeset_do {
 	my $self = shift;
 	
@@ -497,3 +555,24 @@ sub changeset_do {
 
 
 1;
+
+
+__END__
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

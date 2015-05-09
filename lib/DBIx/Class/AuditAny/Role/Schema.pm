@@ -2,14 +2,27 @@ package DBIx::Class::AuditAny::Role::Schema;
 use strict;
 use warnings;
 
-# VERSION
 # ABSTRACT: Role to apply to tracked DBIx::Class::Schema objects
 
 use Moo::Role;
 use MooX::Types::MooseLike::Base qw(:all);
 
-# This Role is for interfaces only. See the Storage role for the actual
-# hooks/logic
+
+=head1 NAME
+
+DBIx::Class::AuditAny::Role::Schema - Role to apply to tracked DBIx::Class::Schema objects
+
+=head1 DESCRIPTION
+
+This Role is for interfaces only. Its main job is to add the L<DBIx::Class::AuditAny::Role::Storage>
+role to the DBIC storage object so the change tracking can occur.
+
+=head1 REQUIRES
+
+=head2 txn_do
+
+Standard method which will be available on all DBIC Schema objects
+=cut
 
 use Try::Tiny;
 use DBIx::Class::AuditAny::Util;
@@ -40,3 +53,24 @@ sub _apply_storage_role {
 
 
 1;
+
+
+__END__
+=head1 SUPPORT
+ 
+IRC:
+ 
+    Join #rapidapp on irc.perl.org.
+
+=head1 AUTHOR
+
+Henry Van Styn <vanstyn@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by IntelliTree Solutions llc.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
