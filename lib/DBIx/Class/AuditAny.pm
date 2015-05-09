@@ -6,6 +6,8 @@ use warnings;
 
 our $VERSION = '0.199999';
 
+use 5.010;
+
 use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
