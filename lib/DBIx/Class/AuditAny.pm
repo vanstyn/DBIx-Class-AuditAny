@@ -301,8 +301,9 @@ sub track_sources {
 		
 		my $source_name = $AuditSourceContext->source;
 		
+    my %log_sources = map {$_=>1} @{$self->log_sources};
 		die "The Log Source (" . $source_name . ") cannot track itself!!"
-			if ($source_name ~~ @{$self->log_sources});
+			if ($log_sources{$source_name});
 
 		# Skip sources we've already setup:
 		return if ($self->tracked_sources->{$source_name});
