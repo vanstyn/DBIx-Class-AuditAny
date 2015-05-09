@@ -4,6 +4,8 @@ use warnings;
 
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
+our $VERSION = '0.199999';
+
 use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
@@ -774,7 +776,8 @@ of getting it released open-source as a stand-alone, general-purpose module was 
 2013. There were however a few loose ends and I got busy with other projects and wasn't able 
 to complete a CPAN release at that time. I finally came back to this project (May 2015) to 
 actually get a release out to CPAN... The code is not the fully embodiment of everything I 
-originally wanted it to be, but it is 95% of the way there and is quite useful as-is
+originally wanted it to be, but it is 95% of the way there and is quite useful as-is (but
+see TODO below for whats still missing)
 
 
 =head2 API and Usage
@@ -995,7 +998,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2013 by IntelliTree Solutions llc.
+This software is copyright (c) 2012 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
