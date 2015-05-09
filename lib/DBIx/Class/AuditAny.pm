@@ -108,12 +108,12 @@ sub track {
 	my $sources = exists $opts{track_sources} ? delete $opts{track_sources} : undef;
 	die 'track_sources must be an arrayref' if ($sources and ! ref($sources) eq 'ARRAY');
 	my $track_all = exists $opts{track_all_sources} ? delete $opts{track_all_sources} : undef;
-	die "track_sources and track_all_sources are incompatable" if ($sources && $track_all);
+	die "track_sources and track_all_sources are incompatible" if ($sources && $track_all);
 	
 	my $init_sources = exists $opts{init_sources} ? delete $opts{init_sources} : undef;
 	die 'init_sources must be an arrayref' if ($init_sources and ! ref($init_sources) eq 'ARRAY');
 	my $init_all = exists $opts{init_all_sources} ? delete $opts{init_all_sources} : undef;
-	die "init_sources and init_all_sources are incompatable" if ($init_sources && $init_all);
+	die "init_sources and init_all_sources are incompatible" if ($init_sources && $init_all);
 	
 	my $collect = exists $opts{collect} ? delete $opts{collect} : undef;
 	if ($collect) {
@@ -659,19 +659,21 @@ DBIx::Class::AuditAny - Flexible change tracking framework for L<DBIx::Class>
 
 This module provides a generalized way to track changes to DBIC databases. The aim is 
 to provide quick/turn-key options to be able to hit the ground running, while also 
-being highly flexible and customizable with sane APIs. C<DBIx::Class::AuditAny> wants 
-to be a general framework on top of which other Change Tracking modules for DBIC can be
-written.
+being highly flexible and customizable with sane APIs. 
+
+C<DBIx::Class::AuditAny> wants to be a general framework on top of which other Change 
+Tracking modules for DBIC can be written, while also providing fully fleshed, end-user
+solutions that can be dropped in and work out-of-the-box.
 
 =head2 Background
 
 This module was originally written in 2012 for an internal client project, and the process
 of getting it released open-source as a stand-alone, general-purpose module was started in
-2013. There were however a few loose ends and I got busy with other projects and wasn't able 
-to complete a CPAN release at that time. I finally came back to this project (May 2015) to 
-actually get a release out to CPAN... The code is not the fully embodiment of everything I 
-originally wanted it to be, but it is 95% of the way there and is quite useful as-is (but
-see TODO below for whats still missing)
+2013. However, I got busy with other projects and wasn't able to complete a CPAN release at 
+that time (mainly due to missing docs and minor loose ends). I finally came back to this 
+project (May 2015) to actually get a release out to CPAN. So, even though the release date 
+is in 2015, the majority of the code is actually several years old (and has been running 
+perfectly in production for several client apps the whole time).
 
 
 =head2 API and Usage
@@ -735,7 +737,7 @@ include things like C<schema> and C<schema_ver>.
 
 B<change> datapoints apply to a specific C<insert>, C<update> or C<delete> statement, 
 and range from simple items such as C<action> (one of 'insert', 'update' or 'delete') 
-to more exotic and complex items like <column_changes_json>. B<source> datapoints are 
+to more exotic and complex items like C<column_changes_json>. B<source> datapoints are 
 logically the same as B<change>, but like B<base> datapoints, only need to be 
 calculated once (per source). These include things like C<table_name> and C<source> 
 (source name).
@@ -743,12 +745,11 @@ calculated once (per source). These include things like C<table_name> and C<sour
 Finally, B<column> datapoints cover information specific to an individual column, such 
 as C<column_name>, C<old_value> and C<new_value>.
 
-There are a number of built-in datapoints (currently stored in L<DBIx::Class::AuditAny
-::Util::BuiltinDatapoints> which is likely to change), but custom datapoints can also 
-be defined. The Auditor config defines a specific set of datapoints to be calculated 
-(built-in and/or custom). If no datapoints are specified, the default list is used 
-(currently C<change_ts, action, source, pri_key_value, column_name, old_value, 
-new_value>).
+There are a number of built-in datapoints (currently stored in 
+L<DBIx::Class::AuditAny::Util::BuiltinDatapoints> which is likely to change), but custom
+datapoints can also be defined. The Auditor config defines a specific set of datapoints to 
+be calculated (built-in and/or custom). If no datapoints are specified, the default list is used 
+(currently C<change_ts, action, source, pri_key_value, column_name, old_value, new_value>).
 
 The list of datapoints is specified as an ArrayRef in the config. For example:
 
@@ -810,41 +811,69 @@ reserved. However, if you really want to use an existing datapoint name, or if y
 =head1 COLLECTORS
 
 Once the Auditor calculates the configured datapoints it passes them to the configured 
-I<Collector>.
+I<Collector>. There are several built-in Collectors provided, but writing a custom Collector
+is a trivial matter. All you need to do is write a L<Moo>-compatible class which consumes
+the L<DBIx::Class::AuditAny::Role::Collector> role and implement a C<record_changes()> method.
+This method is called with a L<ChangeSet|DBIx::Class::AuditAny::AuditContext::ChangeSet> object
+supplied as the argument at the end of every database transaction which performs a write operation. 
 
-...
+No matter how small or large the transaction, the ChangeSet object provides APIs to a nested 
+structure to be able to access all information regarding what changed during the given transaction.
+(See L<AUDIT CONTEXT OBJECTS|DBIx::Class::AuditAny#AUDIT_CONTEXT_OBJECTS> below).
+
 
 =head2 Supplied Collector Classes
 
-=over 4
+The following built-in collector classes are already provided:
 
-=item L<DBIx::Class::AuditAny::Collector::Code>
+=over
 
-=item L<DBIx::Class::AuditAny::Collector::DBIC>
+=item *
 
-=item L<DBIx::Class::AuditAny::Collector::AutoDBIC>
+L<DBIx::Class::AuditAny::Collector::AutoDBIC>
+
+=item *
+
+L<DBIx::Class::AuditAny::Collector::DBIC>
+
+=item *
+
+L<DBIx::Class::AuditAny::Collector::Code>
 
 =back
 
 =head1 AUDIT CONTEXT OBJECTS
 
-...
+Inspired in part by the Catalyst Context object design, the internal machinery which captures and
+organizes the change datapoints associated with a modifying transaction is wrapped in a nested 
+structure of 3 kinds of "context" objects:
 
-Inspired in part by the Catalyst Context object design...
+=over
 
-=over 4
+=item *
 
-=item L<DBIx::Class::AuditAny::AuditContext::ChangeSet>
+L<DBIx::Class::AuditAny::AuditContext::ChangeSet>
 
-=item L<DBIx::Class::AuditAny::AuditContext::Change>
+=item *
 
-=item L<DBIx::Class::AuditAny::AuditContext::Column>
+L<DBIx::Class::AuditAny::AuditContext::Change>
+
+=item *
+
+L<DBIx::Class::AuditAny::AuditContext::Column>
 
 =back
 
+This provides a clean and straightforward API for which Collector classes are able to identify and 
+act on the data in any manner they want, be it recording to a database, logging to a simple file, 
+or taking any kind of programmatic action. Collectors can really be thought of as a structure for 
+powerful external triggers.
+
 =head1 ATTRIBUTES
 
-Note: Documentation of all the individual attrs and methods is still TBD...
+Note: Documentation of all the individual attrs and methods of this class (shown below) is still 
+TBD. However, most meaningful scenarios involving interacting with these is already covered above, 
+or is covered further down in the L<Examples|DBIx::Class::AuditAny#EXAMPLES>.
 
 =head2 datapoints
 
@@ -935,6 +964,8 @@ Note: Documentation of all the individual attrs and methods is still TBD...
 
 =head1 EXAMPLES
 
+=head3 simple dedicated audit db
+
 Record all changes into a *separate*, auto-generated and initialized SQLite schema/db 
 with default datapoints (Quickest/simplest usage - SYNOPSIS example):
 
@@ -952,6 +983,8 @@ Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
      sqlite_db => 'db/audit.db',
    }
  );
+
+=head3 recording to the same db
 
 Record all changes - into specified target sources within the *same*/tracked 
 schema - using specific datapoints:
@@ -974,7 +1007,9 @@ Uses the Collector L<DBIx::Class::AuditAny::Collector::DBIC>
    ],
  );
  
- 
+
+=head3 coderef collector to a file
+
 Dump raw change data for specific sources (Artist and Album) to a file,
 ignore immutable flags in the schema/result classes, and allow more than 
 one DBIx::Class::AuditAny Auditor to be attached to the same schema object:
@@ -996,6 +1031,7 @@ Uses 'collect' sugar param to setup a bare-bones CodeRef Collector
    }
  );
 
+=head3 more customizations
 
 Record all updates (but *not* inserts/deletes) - into specified target sources 
 within the same/tracked schema - using specific datapoints, including user-defined 
@@ -1045,6 +1081,8 @@ datapoints and built-in datapoints with custom names:
  );
 
 
+=head3 user-defined collector
+
 Record all changes into a user-defined custom Collector class - using
 default datapoints:
 
@@ -1058,6 +1096,7 @@ default datapoints:
    }
  );
 
+=head3 query the audit db
 
 Access/query the audit db of Collector::DBIC and Collector::AutoDBIC collectors:
 
@@ -1082,11 +1121,11 @@ Enable tracking multi-primary-key sources (code currently disabled)
 
 =item *
 
-Write lots more tests 
+Write more tests 
 
 =item *
 
-Write lots more documentation
+Write more documentation
 
 =item *
 
@@ -1104,19 +1143,23 @@ Separate set/change/column datapoints into 'pre' and 'post' stages
 
 Add mechanism to enable/disable tracking (localizable global?)
 
+=item *
+
+Switch to use L<Types::Standard>
+
 =back
 
 =head1 SIMILAR MODULES
 
 =head2 DBIx::Class::Journal
 
-L<DBIx::Class::Journal> was the first change tracking module for DBIC released to CPAN. It works,
+L<DBIx::Class::Journal> was the first DBIC change tracking module released to CPAN. It works,
 but is inflexible and mandates a single mode of operation, which is not ideal in many ways.
 
 =head2 DBIx::Class::AuditLog
 
 L<DBIx::Class::AuditLog> takes a more casual approach than L<DBIx::Class::Journal>, which makes
-it easier to work with. However, it still forces a single and specific manner in which it stores
+it easier to work with. However, it still forces a narrow and specific manner in which it stores
 the change history data which doesn't fit all workflows.
 
 AuditAny was designed specifically for flexibility. By separating the I<Auditor> - which captures the

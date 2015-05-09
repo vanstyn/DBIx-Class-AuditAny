@@ -12,7 +12,7 @@ add_stopwords(qw(
     AuditAny AuditObj SchemaObj ResultSource datapoint datapoints Datapoint tiedContexts
     changeset ChangeSet ChangeSets ChangeContext ChangeSetContext SourceContext 
     DBIC schemas TODO ro rw fk param params attr attrs Str TBD codebase
-    Styn IntelliTree llc customizable localizable util uniq Util
+    Styn IntelliTree llc customizable localizable util uniq Util customizations
 ));
 
 set_spell_cmd('aspell list -l en');
