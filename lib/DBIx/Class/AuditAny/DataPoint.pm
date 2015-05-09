@@ -39,8 +39,6 @@ after the actual work to collect it)
 use Moo;
 use MooX::Types::MooseLike::Base 0.19 qw(:all);
 
-use Switch qw(switch);
-
 =head2 AuditObj
 
 Required. Reference to the Auditor object (L<DBIx::Class::AuditAny> instance).

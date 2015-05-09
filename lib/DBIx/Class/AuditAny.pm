@@ -627,7 +627,18 @@ __END__
 
 =head1 NAME
 
-DBIx::Class::AuditAny - Flexible change tracking framework for DBIx::Class
+DBIx::Class::AuditAny - Flexible change tracking framework for L<DBIx::Class>
+
+=begin HTML
+
+<a href='https://coveralls.io/r/vanstyn/DBIx-Class-AuditAny?branch=master'>
+  <img 
+       src='https://coveralls.io/repos/vanstyn/DBIx-Class-AuditAny/badge.svg?branch=master' 
+       alt='Coverage Status' 
+   />
+</a>
+
+=end HTML
 
 =head1 SYNOPSIS
 
