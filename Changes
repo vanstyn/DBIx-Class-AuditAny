@@ -1,0 +1,10 @@
+Revision history for DBIx::Class::AuditAny
+
+0.200000 2015-05-09
+    - First CPAN release
+
+0.1 2013-03-02
+    - Initial stand-alone release (GitHub only)
+
+0.0 2012-12-08
+    - Initial development (within the RapidApp codebase)
