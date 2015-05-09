@@ -642,11 +642,6 @@ DBIx::Class::AuditAny - Flexible change tracking framework for L<DBIx::Class>
 
 =head1 SYNOPSIS
 
-Record all changes into a *separate*, auto-generated and initialized SQLite schema/db 
-with default datapoints (Quickest/simplest usage):
-
-Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
-
  my $schema = My::Schema->connect(@connect);
 
  use DBIx::Class::AuditAny;
@@ -659,121 +654,6 @@ Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
      sqlite_db => 'db/audit.db',
    }
  );
-
-Record all changes - into specified target sources within the *same*/tracked 
-schema - using specific datapoints:
-
-Uses the Collector L<DBIx::Class::AuditAny::Collector::DBIC>
-
- DBIx::Class::AuditAny->track(
-   schema => $schema, 
-   track_all_sources => 1,
-   collector_class => 'Collector::DBIC',
-   collector_params => {
-     target_source => 'MyChangeSet',      # ChangeSet source name
-     change_data_rel => 'changes',        # Change source, via rel within ChangeSet
-     column_data_rel => 'change_columns', # ColumnChange source, via rel within Change
-   },
-   datapoints => [ # predefined/built-in named datapoints:
-     (qw(changeset_ts changeset_elapsed)),
-     (qw(change_elapsed action source pri_key_value)),
-     (qw(column_name old_value new_value)),
-   ],
- );
- 
- 
-Dump raw change data for specific sources (Artist and Album) to a file,
-ignore immutable flags in the schema/result classes, and allow more than 
-one DBIx::Class::AuditAny Auditor to be attached to the same schema object:
-
-Uses 'collect' sugar param to setup a bare-bones CodeRef Collector 
-(L<DBIx::Class::AuditAny::Collector>)
-
- my $Auditor = DBIx::Class::AuditAny->track(
-   schema => $schema, 
-   track_sources => [qw(Artist Album)],
-   track_immutable => 1,
-   allow_multiple_auditors => 1,
-   collect => sub {
-     my $cntx = shift;      # ChangeSet context object
-     require Data::Dumper;
-     print $fh Data::Dumper->Dump([$cntx],[qw(changeset)]);
-     
-     # Do other custom stuff...
-   }
- );
-
-
-Record all updates (but *not* inserts/deletes) - into specified target sources 
-within the same/tracked schema - using specific datapoints, including user-defined 
-datapoints and built-in datapoints with custom names:
-
- DBIx::Class::AuditAny->track(
-   schema => CoolCatalystApp->model('Schema')->schema, 
-   track_all_sources => 1,
-   track_actions => [qw(update)],
-   collector_class => 'Collector::DBIC',
-   collector_params => {
-     target_source => 'MyChangeSet',      # ChangeSet source name
-     change_data_rel => 'changes',        # Change source, via rel within ChangeSet
-     column_data_rel => 'change_columns', # ColumnChange source, via rel within Change
-   },
-   datapoints => [
-     (qw(changeset_ts changeset_elapsed)),
-     (qw(change_elapsed action_id table_name pri_key_value)),
-     (qw(column_name old_value new_value)),
-   ],
-   datapoint_configs => [
-     {
-       name => 'client_ip',
-       context => 'set',
-       method => sub {
-         my $c = some_func(...);
-         return $c->req->address; 
-       }
-     },
-     {
-       name => 'user_id',
-       context => 'set',
-       method => sub {
-         my $c = some_func(...);
-         $c->user->id;
-       }
-     }
-   ],
-   rename_datapoints => {
-     changeset_elapsed => 'total_elapsed',
-     change_elapsed => 'elapsed',
-     pri_key_value => 'row_key',
-     new_value => 'new',
-     old_value => 'old',
-     column_name => 'column',
-   },
- );
-
-
-Record all changes into a user-defined custom Collector class - using
-default datapoints:
-
- my $Auditor = DBIx::Class::AuditAny->track(
-   schema => $schema, 
-   track_all_sources => 1,
-   collector_class => '+MyApp::MyCollector',
-   collector_params => {
-     foo => 'blah',
-     anything => $val
-   }
- );
-
-
-Access/query the audit db of Collector::DBIC and Collector::AutoDBIC collectors:
-
- my $audit_schema = $Auditor->collector->target_schema;
- $audit_schema->resultset('AuditChangeSet')->search({...});
- 
- # Print the ddl that auto-generated and deployed with a Collector::AutoDBIC collector:
- print $audit_schema->resultset('DeployInfo')->first->deployed_ddl;
-
 
 =head1 DESCRIPTION
 
@@ -938,7 +818,7 @@ I<Collector>.
 
 =over 4
 
-=item L<DBIx::Class::AuditAny::Collector>
+=item L<DBIx::Class::AuditAny::Collector::Code>
 
 =item L<DBIx::Class::AuditAny::Collector::DBIC>
 
@@ -965,6 +845,8 @@ Inspired in part by the Catalyst Context object design...
 =head1 ATTRIBUTES
 
 Note: Documentation of all the individual attrs and methods is still TBD...
+
+=head2 datapoints
 
 =head2 allow_multiple_auditors
 
@@ -1051,39 +933,217 @@ Note: Documentation of all the individual attrs and methods is still TBD...
 =head2 record_changes
 
 
+=head1 EXAMPLES
+
+Record all changes into a *separate*, auto-generated and initialized SQLite schema/db 
+with default datapoints (Quickest/simplest usage - SYNOPSIS example):
+
+Uses the Collector L<DBIx::Class::AuditAny::Collector::AutoDBIC>
+
+ my $schema = My::Schema->connect(@connect);
+
+ use DBIx::Class::AuditAny;
+
+ my $Auditor = DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_all_sources => 1,
+   collector_class => 'Collector::AutoDBIC',
+   collector_params => {
+     sqlite_db => 'db/audit.db',
+   }
+ );
+
+Record all changes - into specified target sources within the *same*/tracked 
+schema - using specific datapoints:
+
+Uses the Collector L<DBIx::Class::AuditAny::Collector::DBIC>
+
+ DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_all_sources => 1,
+   collector_class => 'Collector::DBIC',
+   collector_params => {
+     target_source => 'MyChangeSet',      # ChangeSet source name
+     change_data_rel => 'changes',        # Change source, via rel within ChangeSet
+     column_data_rel => 'change_columns', # ColumnChange source, via rel within Change
+   },
+   datapoints => [ # predefined/built-in named datapoints:
+     (qw(changeset_ts changeset_elapsed)),
+     (qw(change_elapsed action source pri_key_value)),
+     (qw(column_name old_value new_value)),
+   ],
+ );
+ 
+ 
+Dump raw change data for specific sources (Artist and Album) to a file,
+ignore immutable flags in the schema/result classes, and allow more than 
+one DBIx::Class::AuditAny Auditor to be attached to the same schema object:
+
+Uses 'collect' sugar param to setup a bare-bones CodeRef Collector 
+(L<DBIx::Class::AuditAny::Role::Collector>)
+
+ my $Auditor = DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_sources => [qw(Artist Album)],
+   track_immutable => 1,
+   allow_multiple_auditors => 1,
+   collect => sub {
+     my $cntx = shift;      # ChangeSet context object
+     require Data::Dumper;
+     print $fh Data::Dumper->Dump([$cntx],[qw(changeset)]);
+     
+     # Do other custom stuff...
+   }
+ );
+
+
+Record all updates (but *not* inserts/deletes) - into specified target sources 
+within the same/tracked schema - using specific datapoints, including user-defined 
+datapoints and built-in datapoints with custom names:
+
+ DBIx::Class::AuditAny->track(
+   schema => CoolCatalystApp->model('Schema')->schema, 
+   track_all_sources => 1,
+   track_actions => [qw(update)],
+   collector_class => 'Collector::DBIC',
+   collector_params => {
+     target_source => 'MyChangeSet',      # ChangeSet source name
+     change_data_rel => 'changes',        # Change source, via rel within ChangeSet
+     column_data_rel => 'change_columns', # ColumnChange source, via rel within Change
+   },
+   datapoints => [
+     (qw(changeset_ts changeset_elapsed)),
+     (qw(change_elapsed action_id table_name pri_key_value)),
+     (qw(column_name old_value new_value)),
+   ],
+   datapoint_configs => [
+     {
+       name => 'client_ip',
+       context => 'set',
+       method => sub {
+         my $c = some_func(...);
+         return $c->req->address; 
+       }
+     },
+     {
+       name => 'user_id',
+       context => 'set',
+       method => sub {
+         my $c = some_func(...);
+         $c->user->id;
+       }
+     }
+   ],
+   rename_datapoints => {
+     changeset_elapsed => 'total_elapsed',
+     change_elapsed => 'elapsed',
+     pri_key_value => 'row_key',
+     new_value => 'new',
+     old_value => 'old',
+     column_name => 'column',
+   },
+ );
+
+
+Record all changes into a user-defined custom Collector class - using
+default datapoints:
+
+ my $Auditor = DBIx::Class::AuditAny->track(
+   schema => $schema, 
+   track_all_sources => 1,
+   collector_class => '+MyApp::MyCollector',
+   collector_params => {
+     foo => 'blah',
+     anything => $val
+   }
+ );
+
+
+Access/query the audit db of Collector::DBIC and Collector::AutoDBIC collectors:
+
+ my $audit_schema = $Auditor->collector->target_schema;
+ $audit_schema->resultset('AuditChangeSet')->search({...});
+ 
+ # Print the ddl that auto-generated and deployed with a Collector::AutoDBIC collector:
+ print $audit_schema->resultset('DeployInfo')->first->deployed_ddl;
+
+=head2 more examples
+
+See the unit tests (which are extensive) for more examples.
+
+
 =head1 TODO
 
-=over 4
+=over
 
-=item Enable tracking multi-primary-key sources (code currently disabled)
+=item *
 
-=item Write lots more tests 
+Enable tracking multi-primary-key sources (code currently disabled)
 
-=item Write lots more documentation
+=item *
 
-=item Expand and finalize API
+Write lots more tests 
 
-=item Add more built-in datapoints
+=item *
 
-=item Review code and get feedback from the perl community for best practices/
-suggestions
+Write lots more documentation
 
-=item Expand the Collector API to be able to provide datapoint configs
+=item *
 
-=item Separate set/change/column datapoints into 'pre' and 'post' stages
+Add more built-in datapoints
 
-=item Add mechanism to enable/disable tracking (localizable global?)
+=item *
+
+Expand the Collector API to be able to provide datapoint configs
+
+=item *
+
+Separate set/change/column datapoints into 'pre' and 'post' stages
+
+=item *
+
+Add mechanism to enable/disable tracking (localizable global?)
 
 =back
 
-=head1 SEE ALSO
- 
-=over 4
- 
-=item L<DBIx::Class::AuditLog>
- 
-=item L<DBIx::Class::Journal>
- 
+=head1 SIMILAR MODULES
+
+=head2 DBIx::Class::Journal
+
+L<DBIx::Class::Journal> was the first change tracking module for DBIC released to CPAN. It works,
+but is inflexible and mandates a single mode of operation, which is not ideal in many ways.
+
+=head2 DBIx::Class::AuditLog
+
+L<DBIx::Class::AuditLog> takes a more casual approach than L<DBIx::Class::Journal>, which makes
+it easier to work with. However, it still forces a single and specific manner in which it stores
+the change history data which doesn't fit all workflows.
+
+AuditAny was designed specifically for flexibility. By separating the I<Auditor> - which captures the
+change data as it happens - from the I<Collector>, which handles storing the data, all sorts of 
+different styles and manners of formatting and storing the audit data can be achieved. In fact,
+L<DBIx::Class::AuditLog> could be written using AuditAny, and store the data in exactly the same 
+manner by implementing a custom collector class.
+
+=head2 DBIx::Class::Shadow
+
+Shadow is a different animal. It is very sophisticated, and places accuracy above all else, with the
+idea of being able to do things such as reliably "revive" the previous state of rows, etc. The 
+downside of this is that it is also not flexible, in that it handles the entire change life cycle 
+within its logic. This is different from AuditAny, which is more like a packet capture lib for DBIC 
+(like tcpdump/libpcap is a packet capture lib for networks). Unlike the others, Shadow could B<not> 
+be implemented using AuditAny, because the I<way> it captures the change data is specific and 
+fundamentally different.
+
+Unfortunately, DBIx::Class::Shadow is unfinished and has never been released to CPAN (as of the time
+of this writing, in May 2015). Its current, unfinished status can be seen in GitHub:
+
+=over
+
+=item *
+
+L<https://github.com/ribasushi/preshadow>
+
 =back
 
 
