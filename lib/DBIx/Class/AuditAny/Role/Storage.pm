@@ -85,6 +85,7 @@ sub add_auditor { push @{(shift)->auditors},(shift) }
 
 before 'txn_begin' => sub {
 	my $self = shift;
+  return if ($ENV{DBIX_CLASS_AUDITANY_SKIP});
 	$_->start_unless_changeset for ($self->all_auditors);
 };
 
@@ -142,6 +143,8 @@ around 'txn_rollback' => sub {
 # insert is the most simple. Always applies to exactly 1 row:
 around 'insert' => sub {
 	my ($orig, $self, @args) = @_;
+  return $self->$orig(@args) if ($ENV{DBIX_CLASS_AUDITANY_SKIP});
+  
 	my ($Source, $to_insert) = @args;
 	
 	# Start new insert operation within each Auditor and get back
@@ -196,6 +199,8 @@ around 'insert' => sub {
 # flow/operation is certainly not ideal, but I don't see any alternative.
 around 'insert_bulk' => sub {
 	my ($orig, $self, @args) = @_;
+  return $self->$orig(@args) if ($ENV{DBIX_CLASS_AUDITANY_SKIP});
+  
 	my ($Source, $cols, $data) = @args;
 	
 	#
@@ -413,6 +418,8 @@ sub _record_change_contexts {
 
 around 'update' => sub {
 	my ($orig, $self, @args) = @_;
+  return $self->$orig(@args) if ($ENV{DBIX_CLASS_AUDITANY_SKIP});
+  
 	my ($Source,$change,$cond) = @args;
   
   return $self->_follow_row_changes({
@@ -428,6 +435,8 @@ around 'update' => sub {
 
 around 'delete' => sub {
 	my ($orig, $self, @args) = @_;
+  return $self->$orig(@args) if ($ENV{DBIX_CLASS_AUDITANY_SKIP});
+  
 	my ($Source, $cond) = @args;
 	
 	# Get the current rows that are going to be deleted:
