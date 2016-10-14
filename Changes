@@ -1,5 +1,9 @@
 Revision history for DBIx::Class::AuditAny
 
+0.200002 2016-10-14
+    - Fix bug throwing exception in CodeRef rel conditions
+    - Coerce new/old values to string in column changes (bugfix)
+
 0.200001 2016-10-12
     - Env variable DBIX_CLASS_AUDITANY_SKIP can be set to temp
       turn off tracking (not officially supported/documented)
