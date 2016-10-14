@@ -38,8 +38,8 @@ Docs regarding the API/purpose of the attributes and methods in this class still
 
 has 'ChangeContext', is => 'ro', required => 1;
 has 'column_name', is => 'ro', isa => Str, required => 1;
-has 'old_value', is => 'ro', isa => Maybe[Str], required => 1;
-has 'new_value', is => 'ro', isa => Maybe[Str], required => 1;
+has 'old_value', is => 'ro', isa => Maybe[Str], coerce => sub { $_[0] ? "$_[0]" : $_[0] }, required => 1;
+has 'new_value', is => 'ro', isa => Maybe[Str], coerce => sub { $_[0] ? "$_[0]" : $_[0] }, required => 1;
 
 =head1 METHODS
 
