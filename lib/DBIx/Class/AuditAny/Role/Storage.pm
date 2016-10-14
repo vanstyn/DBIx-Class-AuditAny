@@ -511,6 +511,9 @@ sub _get_cascading_rekey_columns {
 		foreach my $rel (keys %$rels) {
 			# Only multi rels apply:
 			next unless ($rels->{$rel}{attrs}{accessor} eq 'multi');
+      
+      # NEW: We can't currently do anything with CodeRef conditions
+      next if ((ref($rels->{$rel}{cond})||'') eq 'CODE');
 			
 			# Get all the local columns that effect (i.e. might cascade to) this relationship:
 			my @cols = $self->_parse_cond_cols_by_alias($rels->{$rel}{cond},'self');
