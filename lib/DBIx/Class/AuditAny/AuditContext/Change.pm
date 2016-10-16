@@ -41,10 +41,11 @@ has 'ChangeSetContext', is => 'rw', isa => Maybe[Object], default => sub{undef};
 
 =head2 action
 
-The type of action which triggered this change: insert, update or delete/
+The type of action which triggered this change: insert, update or delete, or the special
+action 'select' which is used to initialize tracked rows in the audit database
 
 =cut
-has 'action', is => 'ro', isa => Enum[qw(insert update delete)], required => 1;
+has 'action', is => 'ro', isa => Enum[qw(insert update delete select)], required => 1;
 
 
 =head2 old_columns

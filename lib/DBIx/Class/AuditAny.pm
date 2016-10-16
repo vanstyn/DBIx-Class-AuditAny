@@ -4,7 +4,7 @@ use warnings;
 
 # ABSTRACT: Flexible change tracking framework for DBIx::Class
 
-our $VERSION = '0.200002';
+our $VERSION = 0.200002;
 
 use 5.010;
 
@@ -363,7 +363,7 @@ sub init_sources {
 
 sub init_all_sources {
 	my $self = shift;
-	$self->init_sources(keys %{$self->track_sources});
+	$self->init_sources(keys %{$self->tracked_sources});
 }
 
 
@@ -433,8 +433,8 @@ sub _add_additional_row_methods {
 			AuditObj				=> $AuditObj,
 			SourceContext		=> $SourceContext,
 			ChangeSetContext	=> $AuditObj->active_changeset,
-			#Row 					=> $Row,
-			old_columns			=> $self->_get_old_columns($Row),
+			Row 					=> $Row,
+      new_columns   => { $Row->get_columns },
 			action				=> 'select'
 		);
 		$ChangeContext->record;
@@ -947,7 +947,18 @@ or is covered further down in the L<Examples|DBIx::Class::AuditAny#EXAMPLES>.
 
 =head2 init_all_sources
 
+Calls C<init_sources> with all tracked source names
+
 =head2 init_sources
+
+Special-purpose method to initialize rows for the case of starting auditing a database with
+existing data. This will simulate changes with the special C<'select'> action. This is useful
+to be able to use the audit database to follow changes backward to a starting point, and having
+that state fully recorded, just as if auditing had been enabled when the rows were inserted.
+
+This method accepts a list of source names and makes sure that every row of each source is 
+initialized. So, be careful, as this can be a very heavy operation depending on the number
+of rows. This is a tool that would generally only be used interactively during a new setup.
 
 =head2 start_unless_changeset
 
@@ -1202,7 +1213,7 @@ Henry Van Styn <vanstyn@cpan.org>
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2012-2015 by IntelliTree Solutions llc.
+This software is copyright (c) 2012-2016 by IntelliTree Solutions llc.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
