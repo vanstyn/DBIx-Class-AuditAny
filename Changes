@@ -1,5 +1,8 @@
 Revision history for DBIx::Class::AuditAny
 
+0.200003 2016-10-16
+    - Old 'init_sources' methods working again
+
 0.200002 2016-10-14
     - Fix bug throwing exception in CodeRef rel conditions
     - Coerce new/old values to string in column changes (bugfix)
