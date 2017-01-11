@@ -68,6 +68,9 @@ after BUILD => sub {
 sub _apply_storage_role {
 	my $self = shift;
 	# Apply the role to the Storage object:
+	# Must determine driver before doing that, so that we apply
+	# the role to the correct instance ( sorry, no saner way for now )
+	$self->storage->_determine_driver;
 	Moo::Role->apply_roles_to_object($self->storage,'DBIx::Class::AuditAny::Role::Storage')
 		unless try{$self->storage->does('DBIx::Class::AuditAny::Role::Storage')};
 }
