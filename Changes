@@ -1,5 +1,8 @@
 Revision history for DBIx::Class::AuditAny
 
+0.200004 2017-01-14
+    - Fix driver determination bug (PR #1) (RIBASUSHI)
+
 0.200003 2016-10-16
     - Old 'init_sources' methods working again
 
