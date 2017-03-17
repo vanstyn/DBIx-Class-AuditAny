@@ -1,5 +1,8 @@
 Revision history for DBIx::Class::AuditAny
 
+0.200100 2017-03-17
+    - Allow multi-col-pk tables to be audited (PR #3) (JROBINSON,TBSLIVER)
+
 0.200004 2017-01-14
     - Fix driver determination bug (PR #1) (RIBASUSHI)
 
