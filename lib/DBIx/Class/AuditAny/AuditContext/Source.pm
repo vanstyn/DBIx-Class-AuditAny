@@ -63,9 +63,9 @@ has 'pri_key_count', is => 'ro', isa => Int, lazy => 1, default => sub {
 sub get_pri_key_value {
 	my $self = shift;
 	my $Row = shift;
-	my @num = $self->pri_key_count;
-	return undef unless (scalar(@num) > 0);
-	return $self->_ambig_get_column($Row,$self->pri_key_column) if (scalar(@num) == 1);
+	my $num = $self->pri_key_count;
+	return undef unless ($num > 0);
+	return $self->_ambig_get_column($Row,$self->pri_key_column) if ($num == 1);
 	my $sep = $self->primary_key_separator;
 	return join($sep, map { $self->_ambig_get_column($Row,$_) } $self->primary_columns );
 }

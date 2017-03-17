@@ -320,13 +320,7 @@ sub track_all_sources {
 	#$class->_init;
 	
 	push @exclude, @{$self->log_sources};
-	
-	# temp - auto exclude sources without exactly one primary key
-	foreach my $source_name ($self->schema->sources) {
-		my $Source = $self->schema->source($source_name);
-		push @exclude, $source_name unless (scalar($Source->primary_columns) == 1);
-	}
-	
+		
 	my %excl = map {$_=>1} @exclude;
 	return $self->track_sources(grep { !$excl{$_} } $self->schema->sources);
 }
