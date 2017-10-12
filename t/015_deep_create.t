@@ -88,9 +88,9 @@ ok(
   "Fetch AuditChangeColumn rows"
 );
 
-
-is_deeply(
-  $rows, &_expected_audit_change_column_rows,
+use Data::Dumper::Concise;
+is(
+  Dumper($rows), Dumper(&_expected_audit_change_column_rows),
   "AuditChangeColumn rows match what was expected exactly"
 );
 
