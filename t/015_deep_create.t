@@ -14,6 +14,24 @@ use_ok( 'DBIx::Class::AuditAny' );
 
 use TestSchema::Two;
 
+
+{
+  require RapidApp::DBIC::Component::TableSpec;
+  my $pkg = 'TestSchema::Two::Result::Team';
+
+  $pkg->load_components('+RapidApp::DBIC::Component::TableSpec');
+
+  $pkg->add_virtual_columns(
+    some_cool_virtual_column => {
+      data_type => "varchar",
+      sql => 'SELECT "fooo"',
+    }
+  );
+
+  $pkg->apply_TableSpec;
+}
+
+
 my @connect = ('dbi:SQLite::memory:','','', { on_connect_call => 'use_foreign_keys' });
 
 ok(
@@ -51,7 +69,7 @@ ok(
 
 
 ok( 
-  $schema->resultset('Team')->create({
+  my $Team = $schema->resultset('Team')->create({
     id => 1,
     name => 'Denver Broncos' 
   }),
@@ -66,7 +84,8 @@ ok(
       {
         first => 'Payton',
         last => 'Manning',
-        team_id => 1,
+        #team_id => 1,
+        team => $Team
       },
       {
         first => 'Trevor',
